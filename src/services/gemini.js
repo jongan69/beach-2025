@@ -1,6 +1,6 @@
 
 
-import { GoogleGenAI, Chat, Type } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 
 let ai;
 

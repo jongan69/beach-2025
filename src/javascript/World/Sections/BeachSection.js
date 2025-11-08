@@ -33,6 +33,10 @@ export default class BeachSection
         this.setStatic()
         this.setTiles()
         this.setCareerAreas()
+        // Create labels asynchronously (will wait for materials to be ready)
+        this.setCareerAreaLabels().catch(err => {
+            console.error('Error creating career area labels:', err)
+        })
         this.setPalmTrees()
         this.setGradTrackText() // Text first, then shark
     }
@@ -219,6 +223,111 @@ export default class BeachSection
             area.careerId = career.careerId
 
             this.careerAreas.push(area)
+        }
+    }
+
+    async setCareerAreaLabels()
+    {
+        // Wait for materials to be available
+        let retries = 0
+        const maxRetries = 50
+        while (retries < maxRetries) {
+            if (this.objects && this.objects.materials && this.objects.materials.shades && this.objects.materials.shades.items) {
+                break
+            }
+            await new Promise(resolve => setTimeout(resolve, 50))
+            retries++
+        }
+        
+        if (!this.objects || !this.objects.materials || !this.objects.materials.shades || !this.objects.materials.shades.items) {
+            console.error('Materials not available after retries for career labels')
+            return
+        }
+
+        // Career areas configuration with beach-themed colors
+        const careerAreas = [
+            {
+                name: 'Software Engineering',
+                position: new THREE.Vector2(this.x, this.y - 30),
+                halfExtents: new THREE.Vector2(3, 3),
+                careerId: 'software-engineering',
+                color: 'blue' // Ocean blue - tech waves
+            },
+            {
+                name: 'Data Science',
+                position: new THREE.Vector2(this.x + 20, this.y - 20),
+                halfExtents: new THREE.Vector2(3, 3),
+                careerId: 'data-science',
+                color: 'emeraldGreen' // Tropical emerald - vibrant data
+            },
+            {
+                name: 'Business',
+                position: new THREE.Vector2(this.x + 30, this.y),
+                halfExtents: new THREE.Vector2(3, 3),
+                careerId: 'business',
+                color: 'orange' // Sunset orange - golden hour business
+            },
+            {
+                name: 'Design',
+                position: new THREE.Vector2(this.x + 20, this.y + 20),
+                halfExtents: new THREE.Vector2(3, 3),
+                careerId: 'design',
+                color: 'purple' // Creative purple - tropical sunset
+            },
+            {
+                name: 'Healthcare',
+                position: new THREE.Vector2(this.x, this.y + 30),
+                halfExtents: new THREE.Vector2(3, 3),
+                careerId: 'healthcare',
+                color: 'red' // Coral red - medical care
+            },
+            {
+                name: 'Finance',
+                position: new THREE.Vector2(this.x - 20, this.y + 20),
+                halfExtents: new THREE.Vector2(3, 3),
+                careerId: 'finance',
+                color: 'yellow' // Golden yellow - sun & wealth
+            },
+            {
+                name: 'Education',
+                position: new THREE.Vector2(this.x - 30, this.y),
+                halfExtents: new THREE.Vector2(3, 3),
+                careerId: 'education',
+                color: 'beige' // Sand beige - beach learning
+            },
+            {
+                name: 'Engineering',
+                position: new THREE.Vector2(this.x - 20, this.y - 20),
+                halfExtents: new THREE.Vector2(3, 3),
+                careerId: 'engineering',
+                color: 'metal' // Metal - technical precision
+            }
+        ]
+
+        // Add labels for each career area with beach-themed colors
+        for (const career of careerAreas) {
+            // Position label above the area (z position slightly higher, y position offset upward)
+            const labelY = career.position.y + career.halfExtents.y + 1.5
+            const labelZ = 1.2
+            
+            // Get the beach-themed material for this career
+            const material = this.objects.materials.shades.items[career.color] || 
+                           this.objects.materials.shades.items.green // Fallback to green
+            
+            if (!material) {
+                console.warn(`Material '${career.color}' not found for ${career.name}, skipping`)
+                continue
+            }
+            
+            // Use smaller text size for labels
+            await this.addText3D(career.name, career.position.x, labelY, labelZ, {
+                material: material,
+                size: 0.8,
+                height: 0.2,
+                letterSpacing: 0.2,
+                mass: 1, // Movable labels - can be pushed by the boat
+                soundName: 'ui' // Quieter sound for labels
+            })
         }
     }
 
@@ -641,6 +750,12 @@ export default class BeachSection
             const textMaterial = material.clone()
             const letterMesh = new THREE.Mesh(letterGeometry, textMaterial)
             
+            // Name the mesh with shade pattern so the parser recognizes the material
+            // The parser looks for names matching /^shade([a-z]+)_?[0-9]{0,3}?/i
+            // Materials already have names like "shadeBlue", "shadeOrange", etc.
+            // Use the material's name directly so the parser can apply the correct material
+            letterMesh.name = material.name || 'shadeGreen'
+            
             // Create collision mesh - use a box shape with proper naming for physics system
             const collisionBoxGeometry = new THREE.BoxGeometry(1, 1, 1)
             const collisionMesh = new THREE.Mesh(collisionBoxGeometry, new THREE.MeshBasicMaterial({ visible: false }))
@@ -678,11 +793,37 @@ export default class BeachSection
 
     async setGradTrackText()
     {
-        // Create "Grad Track" text at independent position
-        await this.addText3D('Grad Track', this.x, this.y - 14, 1)
+        // Wait for materials to be available
+        let retries = 0
+        const maxRetries = 50
+        while (retries < maxRetries) {
+            if (this.objects && this.objects.materials && this.objects.materials.shades && this.objects.materials.shades.items) {
+                break
+            }
+            await new Promise(resolve => setTimeout(resolve, 50))
+            retries++
+        }
         
-        // Create "SharkByte Hackathon" text at independent position (moved 60 pixels/6 units forward from Grad Track)
-        await this.addText3D('SharkByte Hackathon', this.x, this.y - 3.5, 1)
+        if (!this.objects || !this.objects.materials || !this.objects.materials.shades || !this.objects.materials.shades.items) {
+            console.error('Materials not available for Grad Track text')
+            return
+        }
+        
+        // Create "Grad Track" text at independent position - emerald green
+        await this.addText3D('Grad Track', this.x, this.y - 14, 1, {
+            material: this.objects.materials.shades.items.emeraldGreen
+        })
+        
+        // Create "SharkByte Hackathon" text at independent position - ocean blue
+        // Create a custom ocean blue material (lighter, more cyan-tinted blue)
+        const oceanBlueMaterial = this.objects.materials.shades.items.blue.clone()
+        oceanBlueMaterial.name = 'shadeOceanBlue'
+        // Ocean blue is typically around #006994 or #4A90E2 - adjust diffuse color
+        oceanBlueMaterial.uniforms.diffuse.value = new THREE.Color(0x4A90E2) // Ocean blue color
+        
+        await this.addText3D('SharkByte Hackathon', this.x, this.y - 3.5, 1, {
+            material: oceanBlueMaterial
+        })
         
         // After text is created, add the shark
         this.setShark()
