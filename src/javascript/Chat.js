@@ -1,4 +1,5 @@
 import { initializeChat, sendMessageToAI } from '../services/gemini.js'
+import elevenLabsService from '../services/eleven.js'
 
 export default class Chat
 {
@@ -754,7 +755,6 @@ export default class Chat
     async speakCareerPlan(text, careerName = '')
     {
         try {
-            const elevenLabsService = await import('../services/eleven.js')
             const voiceId = 'bajNon13EdhNMndG3z05'
             
             // Create a more natural speaking text
@@ -763,7 +763,7 @@ export default class Chat
                 : text
             
             console.log('Chat: Speaking career plan...')
-            await elevenLabsService.default.speak(voiceId, speakingText)
+            await elevenLabsService.speak(voiceId, speakingText)
             console.log('Chat: Finished speaking career plan')
         } catch (error) {
             console.error('Chat: Error speaking career plan:', error)
