@@ -93,6 +93,8 @@ export default class Resources extends EventEmitter
             { name: 'carCyberTruckBackLightsReverse', source: './models/car/cyberTruck/backLightsReverse.glb' },
             { name: 'carCyberTruckAntena', source: './models/car/cyberTruck/antena.glb' },
 
+            { name: 'boat', source: './models/boat/boat.glb' },
+
             // Project
             { name: 'projectsBoardStructure', source: './models/projects/board/structure.glb' },
             { name: 'projectsBoardCollision', source: './models/projects/board/collision.glb' },

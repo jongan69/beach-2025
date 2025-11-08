@@ -19,10 +19,14 @@ export default class Car
         this.camera = _options.camera
         this.debug = _options.debug
         this.config = _options.config
+        this.scene = _options.scene
 
         // Set up
         this.container = new THREE.Object3D()
         this.position = new THREE.Vector3()
+        
+        // Set up lighting for boat
+        this.setLights()
 
         // Debug
         if(this.debug)
@@ -34,12 +38,33 @@ export default class Car
         this.setModels()
         this.setMovement()
         this.setChassis()
-        this.setAntena()
-        this.setBackLights()
-        this.setWheels()
+        
+        // Only set these if the models exist (for car, not boat)
+        if(this.models.antena)
+        {
+            this.setAntena()
+        }
+        if(this.models.backLightsBrake)
+        {
+            this.setBackLights()
+        }
+        if(this.models.wheel)
+        {
+            this.setWheels()
+        }
+        
         this.setTransformControls()
         this.setShootingBall()
         this.setKlaxon()
+    }
+
+    setLights()
+    {
+        // Only set up lights if we're using the boat
+        // We'll check this after setModels is called, so we'll set up lights in setChassis
+        // But we need to initialize the lights here
+        this.ambientLight = null
+        this.directionalLight = null
     }
 
     setModels()
@@ -56,16 +81,26 @@ export default class Car
             this.models.wheel = this.resources.items.carCyberTruckWheel
         }
 
-        // Default
+        // Default - Boat
         else
         {
-            this.models.chassis = this.resources.items.carDefaultChassis
-            this.models.antena = this.resources.items.carDefaultAntena
-            // this.models.bunnyEarLeft = this.resources.items.carDefaultBunnyEarLeft
-            // this.models.bunnyEarRight = this.resources.items.carDefaultBunnyEarRight
-            this.models.backLightsBrake = this.resources.items.carDefaultBackLightsBrake
-            this.models.backLightsReverse = this.resources.items.carDefaultBackLightsReverse
-            this.models.wheel = this.resources.items.carDefaultWheel
+            // Debug: Check if boat resource exists
+            if(!this.resources.items.boat)
+            {
+                console.error('Boat resource not found! Available resources:', Object.keys(this.resources.items))
+                console.error('Make sure Resources.js is saved and browser is refreshed!')
+                // Fallback to default car temporarily
+                this.models.chassis = this.resources.items.carDefaultChassis
+                this.models.antena = this.resources.items.carDefaultAntena
+                this.models.backLightsBrake = this.resources.items.carDefaultBackLightsBrake
+                this.models.backLightsReverse = this.resources.items.carDefaultBackLightsReverse
+                this.models.wheel = this.resources.items.carDefaultWheel
+            }
+            else
+            {
+                this.models.chassis = this.resources.items.boat
+                // Boat is a single asset, so we don't set the other parts
+            }
         }
     }
 
@@ -81,6 +116,12 @@ export default class Car
         // Time tick
         this.time.on('tick', () =>
         {
+            // Safety check - ensure chassis is initialized
+            if(!this.chassis || !this.chassis.object)
+            {
+                return
+            }
+            
             // Movement
             const movementSpeed = new THREE.Vector3()
             movementSpeed.copy(this.chassis.object.position).sub(this.chassis.oldPosition)
@@ -107,7 +148,153 @@ export default class Car
     {
         this.chassis = {}
         this.chassis.offset = new THREE.Vector3(0, 0, - 0.28)
+        
+        // Safety check - ensure chassis model exists
+        if(!this.models.chassis)
+        {
+            console.error('Chassis model is undefined! Check if resource loaded correctly.')
+            return
+        }
+        
+        // Safety check - ensure GLB loaded correctly (should have .scene property)
+        if(!this.models.chassis.scene)
+        {
+            console.error('Chassis model does not have a scene property. Model structure:', this.models.chassis)
+            console.error('This usually means the GLB file failed to load or has wrong format.')
+            return
+        }
+        
+        // Debug: Log the boat model structure
+        console.log('Boat model scene:', this.models.chassis.scene)
+        console.log('Boat scene children:', this.models.chassis.scene.children)
+        console.log('Boat scene children count:', this.models.chassis.scene.children.length)
+        
+        // Check if children exist and log their types
+        if(this.models.chassis.scene.children.length > 0)
+        {
+            this.models.chassis.scene.children.forEach((child, index) => {
+                console.log(`Child ${index}:`, child.name, child.type, child)
+                if(child.children && child.children.length > 0)
+                {
+                    console.log(`  - Has ${child.children.length} nested children`)
+                    child.children.forEach((nested, nestedIndex) => {
+                        console.log(`    Nested ${nestedIndex}:`, nested.name, nested.type)
+                    })
+                }
+            })
+        }
+        
         this.chassis.object = this.objects.getConvertedMesh(this.models.chassis.scene.children)
+        
+        // Debug: Check if container was created and has children
+        console.log('Chassis object created:', this.chassis.object)
+        console.log('Chassis object children count:', this.chassis.object.children.length)
+        
+        // Check if we're using boat (single asset) vs car (multiple assets)
+        this.chassis.isBoat = !this.config.cyberTruck && this.models.chassis === this.resources.items.boat
+        
+        // Set up lighting for boat if needed
+        if(this.chassis.isBoat && !this.ambientLight)
+        {
+            // Ambient light for overall illumination - high intensity for vivid colors
+            this.ambientLight = new THREE.AmbientLight(0xffffff, 2.0)
+            this.scene.add(this.ambientLight)
+            
+            // Directional light (like sunlight) - high intensity for vivid colors
+            this.directionalLight = new THREE.DirectionalLight(0xffffff, 2.5)
+            this.directionalLight.position.set(5, 10, 5)
+            this.directionalLight.castShadow = false
+            this.scene.add(this.directionalLight)
+            
+            console.log('Boat lighting set up: Ambient + Directional (high intensity)')
+        }
+        
+        if(this.chassis.object.children.length === 0 || this.chassis.isBoat)
+        {
+            if(this.chassis.object.children.length === 0)
+            {
+                console.warn('WARNING: Chassis object has no children! The boat model might not be processing correctly.')
+                console.warn('Trying to add the scene directly as fallback...')
+            }
+            
+            // For boat: use scene directly and apply materials
+            const sceneClone = this.models.chassis.scene.clone()
+            
+            // Traverse and ensure all meshes have proper materials that respond to lighting
+            sceneClone.traverse((child) => {
+                if(child instanceof THREE.Mesh)
+                {
+                    let material = null
+                    
+                    // Preserve original material if it exists and is valid
+                    if(child.material && child.material.isMaterial)
+                    {
+                        // Material exists, convert it to a material that responds to lights
+                        if(Array.isArray(child.material))
+                        {
+                            material = child.material[0]
+                        }
+                        else
+                        {
+                            material = child.material
+                        }
+                        
+                        // Convert to MeshStandardMaterial to respond to lighting
+                        if(material.type !== 'MeshStandardMaterial' && material.type !== 'MeshPhongMaterial')
+                        {
+                            // Extract color from original material
+                            const color = material.color ? material.color : new THREE.Color(0xffffff)
+                            const map = material.map ? material.map : null
+                            
+                            // Create new material that responds to lights
+                            material = new THREE.MeshStandardMaterial({
+                                color: color,
+                                map: map,
+                                metalness: 0.1,
+                                roughness: 0.7
+                            })
+                        }
+                    }
+                    else
+                    {
+                        // No material - create a new material that responds to lights
+                        material = new THREE.MeshStandardMaterial({
+                            color: 0xffffff,
+                            metalness: 0.1,
+                            roughness: 0.7
+                        })
+                    }
+                    
+                    // Apply the material
+                    child.material = material
+                    child.material.needsUpdate = true
+                }
+            })
+            
+            this.chassis.object = sceneClone
+            console.log('Using scene clone directly. Children count:', this.chassis.object.children.length)
+        }
+        else
+        {
+            // For car models, also ensure materials are applied
+            this.chassis.object.traverse((child) => {
+                if(child instanceof THREE.Mesh && (!child.material || !child.material.isMaterial))
+                {
+                    child.material = this.materials.shades.items.white
+                }
+            })
+        }
+        
+        // Fix rotation for boat - rotate to lie horizontally
+        if(this.chassis.isBoat)
+        {
+            // Rotate boat to lie horizontally (rotate -90 degrees around X axis)
+            // Then flip 180 degrees on Z axis, and rotate -90 degrees on Y axis
+            this.chassis.boatRotation = new THREE.Euler(- Math.PI / 2, - Math.PI / 2, Math.PI)
+            this.chassis.object.rotation.copy(this.chassis.boatRotation)
+            console.log('Applied boat rotation:', this.chassis.object.rotation)
+        }
+        
         this.chassis.object.position.copy(this.physics.car.chassis.body.position)
         this.chassis.oldPosition = this.chassis.object.position.clone()
         this.container.add(this.chassis.object)
@@ -124,7 +311,19 @@ export default class Car
             if(!this.transformControls.enabled)
             {
                 this.chassis.object.position.copy(this.physics.car.chassis.body.position).add(this.chassis.offset)
-                this.chassis.object.quaternion.copy(this.physics.car.chassis.body.quaternion)
+                
+                // For boat, combine physics rotation with boat's base rotation
+                if(this.chassis.isBoat && this.chassis.boatRotation)
+                {
+                    // Apply physics rotation, then add boat's base rotation
+                    this.chassis.object.quaternion.copy(this.physics.car.chassis.body.quaternion)
+                    const boatQuaternion = new THREE.Quaternion().setFromEuler(this.chassis.boatRotation)
+                    this.chassis.object.quaternion.multiplyQuaternions(this.chassis.object.quaternion, boatQuaternion)
+                }
+                else
+                {
+                    this.chassis.object.quaternion.copy(this.physics.car.chassis.body.quaternion)
+                }
             }
 
             // Update position

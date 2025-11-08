@@ -392,7 +392,8 @@ export default class World
             renderer: this.renderer,
             camera: this.camera,
             debug: this.debugFolder,
-            config: this.config
+            config: this.config,
+            scene: this.scene
         })
         this.container.add(this.car.container)
     }

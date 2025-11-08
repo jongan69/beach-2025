@@ -257,7 +257,7 @@ export default class Physics
                 const shape = new CANNON.Cylinder(_wheelInfos.radius, _wheelInfos.radius, this.car.wheels.options.height, 20)
                 const body = new CANNON.Body({ mass: this.car.options.wheelMass, material: this.materials.items.wheel })
                 const quaternion = new CANNON.Quaternion()
-                quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2)
+                quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), - Math.PI / 2)
 
                 body.type = CANNON.Body.KINEMATIC
 
