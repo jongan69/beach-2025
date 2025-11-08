@@ -141,6 +141,9 @@ export default class Resources extends EventEmitter
             { name: 'playgroundStaticCollision', source: './models/playground/static/collision.glb' },
             { name: 'playgroundStaticFloorShadow', source: './models/playground/static/floorShadow.png', type: 'texture' },
 
+            // Palm Tree
+            { name: 'palmTree', source: './models/palmTree/palm-tree.glb' },
+
             // Brick
             { name: 'brickBase', source: './models/brick/base.glb' },
             { name: 'brickCollision', source: './models/brick/collision.glb' },
@@ -245,31 +248,56 @@ export default class Resources extends EventEmitter
 
         this.loader.on('end', () =>
         {
-            // Convert trees to palm trees in static models
-            this.convertTreesToPalmTrees()
+            // Remove trees from static models
+            this.removeTreesFromStaticModels()
             
             // Trigger ready
             this.trigger('ready')
         })
     }
 
-    convertTreesToPalmTrees()
+    /**
+     * Remove trees from all static base and collision models
+     */
+    removeTreesFromStaticModels()
     {
-        // List of static base models that might contain trees
+        // List of static base models that contain trees
         const staticModels = [
-            'introStaticBase'
+            'introStaticBase',
+            'playgroundStaticBase',
+            'crossroadsStaticBase'
         ]
 
         staticModels.forEach(modelName => {
             if (this.items[modelName] && this.items[modelName].scene) {
-                this.processTreeConversion(this.items[modelName].scene)
+                console.log(`Removing trees from ${modelName}`)
+                this.removeTrees(this.items[modelName].scene)
+            }
+        })
+
+        // Also remove trees from collision models
+        const collisionModelNames = [
+            'introStaticCollision',
+            'playgroundStaticCollision',
+            'crossroadsStaticCollision'
+        ]
+
+        collisionModelNames.forEach(modelName => {
+            if (this.items[modelName] && this.items[modelName].scene) {
+                console.log(`Removing trees from ${modelName}`)
+                this.removeTrees(this.items[modelName].scene)
             }
         })
     }
 
-    processTreeConversion(_object)
+    /**
+     * Traverse and remove tree meshes from an object
+     * @param {THREE.Object3D} _object - The object to remove trees from
+     */
+    removeTrees(_object)
     {
-        // Traverse the object and its children recursively
+        const meshesToRemove = []
+        
         _object.traverse((child) => {
             if (child instanceof THREE.Mesh) {
                 const name = child.name.toLowerCase()
@@ -304,30 +332,31 @@ export default class Resources extends EventEmitter
                 const isTree = isTreeByName || isTreeByGeometry
                 
                 if (isTree) {
-                    // Transform to palm tree characteristics
-                    if (name.includes('trunk') || name.includes('stem') || 
-                        (isTreeByGeometry && !name.includes('leaf') && !name.includes('foliage'))) {
-                        // Make trunk taller and thinner (palm tree style)
-                        child.scale.y *= 1.5 // Make taller
-                        child.scale.x *= 0.7  // Make thinner
-                        child.scale.z *= 0.7  // Make thinner
-                    } else if (name.includes('leaf') || name.includes('foliage') || name.includes('branch')) {
-                        // Transform leaves into palm fronds
-                        // Make them more horizontal and spread out
-                        child.scale.y *= 0.8
-                        child.scale.x *= 1.3
-                        child.scale.z *= 1.3
-                        // Rotate to be more horizontal (palm fronds)
-                        child.rotation.x += Math.PI * 0.1
+                    meshesToRemove.push(child)
+                    console.log(`Marking tree for removal: ${child.name} (h/w ratio: ${heightToWidthRatio.toFixed(2)})`)
+                }
+            }
+        })
+        
+        // Remove the meshes
+        meshesToRemove.forEach((mesh) => {
+            if (mesh.parent) {
+                mesh.parent.remove(mesh)
+                
+                // Dispose of geometry and material to free memory
+                if (mesh.geometry) {
+                    mesh.geometry.dispose()
+                }
+                if (mesh.material) {
+                    if (Array.isArray(mesh.material)) {
+                        mesh.material.forEach(mat => mat.dispose())
                     } else {
-                        // Generic tree - transform to palm tree
-                        // Make taller and thinner
-                        child.scale.y *= 1.4
-                        child.scale.x *= 0.75
-                        child.scale.z *= 0.75
+                        mesh.material.dispose()
                     }
                 }
             }
         })
+        
+        console.log(`Removed ${meshesToRemove.length} tree meshes`)
     }
 }

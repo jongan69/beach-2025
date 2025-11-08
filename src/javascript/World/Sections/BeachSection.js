@@ -18,15 +18,22 @@ export default class BeachSection
         this.x = _options.x
         this.y = _options.y
         this.application = _options.application // Store application instance
+        this.physics = _options.physics // Physics system for collision
 
         // Set up
         this.container = new THREE.Object3D()
         this.container.matrixAutoUpdate = false
         this.container.updateMatrix()
 
+        // Font loader for 3D text
+        this.fontLoader = new FontLoader()
+        this.font = null
+        this.fontLoadPromise = null
+
         this.setStatic()
         this.setTiles()
         this.setCareerAreas()
+        this.setPalmTrees()
         this.setGradTrackText()
     }
 
@@ -215,125 +222,368 @@ export default class BeachSection
         }
     }
 
-    setGradTrackText()
+    setPalmTrees()
     {
-        // Create 3D text "Grad Track" with each letter as an independent physics object
-        const loader = new FontLoader()
-        
-        // Use Three.js default font (helvetiker)
-        loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
-            const text = 'Grad Track'
-            const letters = text.split('')
-            const letterSpacing = 0.3 // Spacing between letters
-            const baseX = this.x
-            const baseY = this.y - 10
-            const baseZ = 1
+        // Check if palm tree model is available
+        if (!this.resources.items.palmTree) {
+            console.warn('Palm tree model not loaded')
+            return
+        }
+
+        // Add palm trees around the beach area with natural distribution
+        // Taller trees (increased by ~10 pixels/0.15-0.2 scale), avoiding text areas, with more trees in the background
+        const palmTreePositions = [
+            // Side palm trees - avoiding text area (SharkByte at y=-3.5, GradTrack at y=-14) - LARGE
+            { x: this.x - 8, y: this.y - 8, rotation: Math.PI * 0.15, scale: 1.3 },
+            { x: this.x + 8, y: this.y - 8, rotation: -Math.PI * 0.15, scale: 1.25 },
+            { x: this.x - 8, y: this.y + 5, rotation: Math.PI * 0.12, scale: 1.35 },
+            { x: this.x + 8, y: this.y + 5, rotation: -Math.PI * 0.12, scale: 1.28 },
+            // Mid-range palm trees for depth - MEDIUM
+            { x: this.x - 11, y: this.y - 10, rotation: Math.PI * 0.2, scale: 1.15 },
+            { x: this.x + 11, y: this.y - 10, rotation: -Math.PI * 0.2, scale: 1.2 },
+            { x: this.x - 11, y: this.y + 9, rotation: Math.PI * 0.18, scale: 1.18 },
+            { x: this.x + 11, y: this.y + 9, rotation: -Math.PI * 0.18, scale: 1.22 },
+            // Outer palm trees near career paths - MEDIUM
+            { x: this.x - 14, y: this.y - 13, rotation: Math.PI * 0.1, scale: 1.1 },
+            { x: this.x + 14, y: this.y - 13, rotation: -Math.PI * 0.1, scale: 1.12 },
+            { x: this.x - 14, y: this.y + 12, rotation: Math.PI * 0.1, scale: 1.08 },
+            { x: this.x + 14, y: this.y + 12, rotation: -Math.PI * 0.1, scale: 1.15 },
+            // Background palm trees - create depth - SMALL
+            { x: this.x - 16, y: this.y - 16, rotation: Math.PI * 0.08, scale: 1.0 },
+            { x: this.x + 16, y: this.y - 16, rotation: -Math.PI * 0.08, scale: 0.97 },
+            { x: this.x - 16, y: this.y + 16, rotation: Math.PI * 0.09, scale: 1.02 },
+            { x: this.x + 16, y: this.y + 16, rotation: -Math.PI * 0.09, scale: 0.99 },
+            { x: this.x, y: this.y - 18, rotation: 0, scale: 0.95 },
+            { x: this.x, y: this.y + 18, rotation: 0, scale: 0.98 },
+            // Additional background trees for fullness - SMALL
+            { x: this.x - 19, y: this.y - 10, rotation: Math.PI * 0.12, scale: 0.93 },
+            { x: this.x + 19, y: this.y - 10, rotation: -Math.PI * 0.12, scale: 0.91 },
+            { x: this.x - 19, y: this.y + 10, rotation: Math.PI * 0.11, scale: 0.94 },
+            { x: this.x + 19, y: this.y + 10, rotation: -Math.PI * 0.11, scale: 0.96 },
+        ]
+
+        palmTreePositions.forEach((pos, index) => {
+            const palmTree = this.resources.items.palmTree.scene.clone()
             
-            // Calculate total width to center the text
-            let totalWidth = 0
-            const letterWidths = []
-            
-            // First pass: calculate widths
-            for (let i = 0; i < letters.length; i++) {
-                const letter = letters[i]
-                if (letter === ' ') {
-                    letterWidths.push(1) // Space width
-                    totalWidth += 1
-                } else {
-                    const letterGeometry = new TextGeometry(letter, {
-                        font: font,
-                        size: 2,
-                        height: 0.5,
-                        curveSegments: 12,
-                        bevelEnabled: true,
-                        bevelThickness: 0.1,
-                        bevelSize: 0.1,
-                        bevelOffset: 0,
-                        bevelSegments: 5
-                    })
-                    letterGeometry.computeBoundingBox()
-                    const width = letterGeometry.boundingBox.max.x - letterGeometry.boundingBox.min.x
-                    letterWidths.push(width)
-                    totalWidth += width
-                    if (i < letters.length - 1) {
-                        totalWidth += letterSpacing
+            // Ensure all meshes are visible and have proper materials
+            let meshCount = 0
+            palmTree.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    meshCount++
+                    // Ensure mesh is visible
+                    child.visible = true
+                    
+                    // Fix materials to ensure they're visible and respond to lighting
+                    if (child.material) {
+                        // Handle material arrays
+                        const materials = Array.isArray(child.material) ? child.material : [child.material]
+                        
+                        materials.forEach((material) => {
+                            if (material) {
+                                // Ensure material is visible
+                                material.visible = true
+                                material.transparent = false
+                                
+                                // If material doesn't respond to lights, convert it
+                                if (material.type === 'MeshBasicMaterial') {
+                                    const newMaterial = new THREE.MeshStandardMaterial({
+                                        color: material.color || 0xffffff,
+                                        map: material.map || null,
+                                        metalness: 0.1,
+                                        roughness: 0.7
+                                    })
+                                    if (Array.isArray(child.material)) {
+                                        const matIndex = child.material.indexOf(material)
+                                        child.material[matIndex] = newMaterial
+                                    } else {
+                                        child.material = newMaterial
+                                    }
+                                }
+                                
+                                // Ensure material updates
+                                material.needsUpdate = true
+                            }
+                        })
+                    } else {
+                        // No material - add a default visible material
+                        child.material = new THREE.MeshStandardMaterial({
+                            color: 0xffffff,
+                            metalness: 0.1,
+                            roughness: 0.7
+                        })
                     }
                 }
-            }
+            })
             
-            // Calculate starting x position to center the text
-            let currentX = -totalWidth / 2
+            palmTree.position.set(pos.x, pos.y, 0)
+            palmTree.rotation.x = Math.PI / 2 // Rotate 90 degrees on x axis
             
-            // Second pass: create each letter as a separate object
-            for (let i = 0; i < letters.length; i++) {
-                const letter = letters[i]
+            // Limit tilt to prevent palm trees from being too tilted
+            // Maximum tilt: 0.15 radians (approximately 8.6 degrees)
+            const maxTilt = 0.15
+            const clampedRotation = Math.max(-maxTilt, Math.min(maxTilt, pos.rotation))
+            palmTree.rotation.z = clampedRotation
+            
+            // Use specified scale with slight variation for natural look
+            const scale = (pos.scale || 0.8) + (Math.random() - 0.5) * 0.1
+            palmTree.scale.set(scale, scale, scale)
+            
+            // Ensure the palm tree itself is visible
+            palmTree.visible = true
+            
+            // Update matrix before calculating bounding box
+            palmTree.updateMatrixWorld(true)
+            
+            // Add collision box around palm tree trunk only
+            if (this.physics) {
+                // Find trunk/pole meshes in the palm tree
+                const trunkMeshes = []
+                palmTree.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        const name = child.name.toLowerCase()
+                        
+                        // Check if this is a trunk/pole by name
+                        const isTrunkByName = name.includes('trunk') || 
+                                            name.includes('pole') || 
+                                            name.includes('stem') ||
+                                            name.includes('log')
+                        
+                        // Check geometry characteristics: tall, narrow, vertical objects are likely trunks
+                        const box = new THREE.Box3().setFromObject(child)
+                        const size = box.getSize(new THREE.Vector3())
+                        const height = Math.max(size.x, size.y, size.z)
+                        const width = Math.min(size.x, size.y, size.z)
+                        const heightToWidthRatio = height > 0 ? height / Math.max(width, 0.1) : 0
+                        
+                        // Trunk characteristics: tall and narrow (height/width ratio > 2), and not leaves/fronds
+                        const isTrunkByGeometry = heightToWidthRatio > 2.0 && 
+                                                 height > 0.3 && 
+                                                 !name.includes('leaf') &&
+                                                 !name.includes('frond') &&
+                                                 !name.includes('palm') &&
+                                                 !name.includes('crown')
+                        
+                        if (isTrunkByName || isTrunkByGeometry) {
+                            trunkMeshes.push(child)
+                        }
+                    }
+                })
                 
-                if (letter === ' ') {
-                    // Skip spaces but account for their width
-                    currentX += letterWidths[i] + letterSpacing
-                    continue
+                // Calculate bounding box only for trunk meshes
+                let trunkBox = new THREE.Box3()
+                if (trunkMeshes.length > 0) {
+                    // Calculate bounding box for all trunk meshes combined
+                    trunkMeshes.forEach(mesh => {
+                        const meshBox = new THREE.Box3().setFromObject(mesh)
+                        trunkBox.union(meshBox)
+                    })
+                } else {
+                    // Fallback: if no trunk found, use a default small box at the base
+                    trunkBox.setFromCenterAndSize(
+                        new THREE.Vector3(0, 0, 0.5),
+                        new THREE.Vector3(0.3, 0.3, 1.0)
+                    )
                 }
                 
-                // Create geometry for this letter
-                const letterGeometry = new TextGeometry(letter, {
-                    font: font,
-                    size: 2,
-                    height: 0.5,
-                    curveSegments: 12,
-                    bevelEnabled: true,
-                    bevelThickness: 0.1,
-                    bevelSize: 0.1,
-                    bevelOffset: 0,
-                    bevelSegments: 5
-                })
+                const size = trunkBox.getSize(new THREE.Vector3())
+                const center = trunkBox.getCenter(new THREE.Vector3())
                 
-                // Center the letter geometry
-                letterGeometry.computeBoundingBox()
-                const center = new THREE.Vector3()
-                letterGeometry.boundingBox.getCenter(center)
-                letterGeometry.translate(-center.x, -center.y, -center.z)
-                
-                // Get bounding box dimensions for collision
-                const size = new THREE.Vector3()
-                letterGeometry.boundingBox.getSize(size)
-                
-                // Create visual mesh - use green material from the materials system
-                const textMaterial = this.objects.materials.shades.items.green.clone()
-                const letterMesh = new THREE.Mesh(letterGeometry, textMaterial)
-                
-                // Create collision mesh - use a box shape with proper naming for physics system
+                // Create collision box using physics system
                 const collisionBoxGeometry = new THREE.BoxGeometry(1, 1, 1)
                 const collisionMesh = new THREE.Mesh(collisionBoxGeometry, new THREE.MeshBasicMaterial({ visible: false }))
-                collisionMesh.name = 'cube' // Important: name must match physics system pattern
+                collisionMesh.name = 'box'
                 collisionMesh.scale.set(size.x, size.y, size.z)
                 
-                // Create base scene for visual
-                const baseScene = new THREE.Scene()
-                baseScene.add(letterMesh)
-                
-                // Create collision scene
-                const collisionScene = new THREE.Scene()
-                collisionScene.add(collisionMesh)
-                
-                // Calculate position for this letter
-                const letterX = baseX + currentX + letterWidths[i] / 2
-                
-                // Add letter to world with collision
-                // Rotate 90 degrees on x-axis (Math.PI / 2 radians)
-                // Use positive mass to make it movable by the boat
-                this.objects.add({
-                    base: baseScene,
-                    collision: collisionScene,
-                    offset: new THREE.Vector3(letterX, baseY, baseZ),
-                    rotation: new THREE.Euler(Math.PI / 2, 0, 0), // 90 degrees on x-axis
-                    mass: 2, // Dynamic object - can be moved by boat collisions
-                    sleep: false, // Start awake so it can be moved immediately
-                    soundName: 'car-hits' // Play sound on collision
+                // Add collision using physics system
+                this.physics.addObjectFromThree({
+                    meshes: [collisionMesh],
+                    offset: new THREE.Vector3(pos.x + center.x, pos.y + center.y, center.z),
+                    rotation: new THREE.Euler(0, 0, clampedRotation),
+                    mass: 0, // Static object - palm trees don't move
+                    sleep: true
                 })
-                
-                // Move to next letter position
-                currentX += letterWidths[i] + letterSpacing
             }
+            
+            this.container.add(palmTree)
         })
+    }
+
+    /**
+     * Loads the font if not already loaded and returns a promise
+     * @returns {Promise} Promise that resolves with the font
+     */
+    loadFont()
+    {
+        if (this.font) {
+            return Promise.resolve(this.font)
+        }
+        
+        if (this.fontLoadPromise) {
+            return this.fontLoadPromise
+        }
+        
+        this.fontLoadPromise = new Promise((resolve, reject) => {
+            this.fontLoader.load(
+                'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+                (font) => {
+                    this.font = font
+                    resolve(font)
+                },
+                undefined,
+                (error) => {
+                    reject(error)
+                }
+            )
+        })
+        
+        return this.fontLoadPromise
+    }
+
+    /**
+     * Creates 3D text at any position with independent positioning
+     * @param {string} text - The text to display
+     * @param {number} x - X position in world space
+     * @param {number} y - Y position in world space
+     * @param {number} z - Z position in world space (default: 1)
+     * @param {Object} options - Optional configuration
+     * @param {THREE.Material} options.material - Material to use (default: green material)
+     * @param {number} options.size - Text size (default: 1.5)
+     * @param {number} options.height - Text height/depth (default: 0.4)
+     * @param {number} options.letterSpacing - Spacing between letters (default: 0.3)
+     * @param {number} options.mass - Physics mass (default: 2)
+     * @param {string} options.soundName - Sound to play on collision (default: 'car-hits')
+     * @returns {Promise} Promise that resolves when text is created
+     */
+    async addText3D(text, x, y, z = 1, options = {})
+    {
+        // Load font if needed
+        const font = await this.loadFont()
+        
+        // Default options
+        const {
+            material = this.objects.materials.shades.items.green,
+            size = 1.5,
+            height = 0.4,
+            letterSpacing = 0.3,
+            mass = 2,
+            soundName = 'car-hits'
+        } = options
+        
+        const letters = text.split('')
+        
+        // Calculate total width to center the text
+        let totalWidth = 0
+        const letterWidths = []
+        
+        // First pass: calculate widths
+        for (let i = 0; i < letters.length; i++) {
+            const letter = letters[i]
+            if (letter === ' ') {
+                letterWidths.push(1) // Space width
+                totalWidth += 1
+            } else {
+                const letterGeometry = new TextGeometry(letter, {
+                    font: font,
+                    size: size,
+                    height: height,
+                    curveSegments: 16,
+                    bevelEnabled: true,
+                    bevelThickness: 0.15,
+                    bevelSize: 0.12,
+                    bevelOffset: 0,
+                    bevelSegments: 8
+                })
+                letterGeometry.computeBoundingBox()
+                const width = letterGeometry.boundingBox.max.x - letterGeometry.boundingBox.min.x
+                letterWidths.push(width)
+                totalWidth += width
+                if (i < letters.length - 1) {
+                    totalWidth += letterSpacing
+                }
+            }
+        }
+        
+        // Calculate starting x position to center the text
+        let currentX = -totalWidth / 2
+        
+        // Second pass: create each letter as a separate object
+        for (let i = 0; i < letters.length; i++) {
+            const letter = letters[i]
+            
+            if (letter === ' ') {
+                // Skip spaces but account for their width
+                currentX += letterWidths[i] + letterSpacing
+                continue
+            }
+            
+            // Create geometry for this letter
+            const letterGeometry = new TextGeometry(letter, {
+                font: font,
+                size: size,
+                height: height,
+                curveSegments: 12,
+                bevelEnabled: true,
+                bevelThickness: 0.1,
+                bevelSize: 0.1,
+                bevelOffset: 0,
+                bevelSegments: 5
+            })
+            
+            // Center the letter geometry
+            letterGeometry.computeBoundingBox()
+            const center = new THREE.Vector3()
+            letterGeometry.boundingBox.getCenter(center)
+            letterGeometry.translate(-center.x, -center.y, -center.z)
+            
+            // Get bounding box dimensions for collision
+            const sizeVec = new THREE.Vector3()
+            letterGeometry.boundingBox.getSize(sizeVec)
+            
+            // Create visual mesh - use provided material
+            const textMaterial = material.clone()
+            const letterMesh = new THREE.Mesh(letterGeometry, textMaterial)
+            
+            // Create collision mesh - use a box shape with proper naming for physics system
+            const collisionBoxGeometry = new THREE.BoxGeometry(1, 1, 1)
+            const collisionMesh = new THREE.Mesh(collisionBoxGeometry, new THREE.MeshBasicMaterial({ visible: false }))
+            collisionMesh.name = 'cube' // Important: name must match physics system pattern
+            collisionMesh.scale.set(sizeVec.x, sizeVec.y, sizeVec.z)
+            
+            // Create base scene for visual
+            const baseScene = new THREE.Scene()
+            baseScene.add(letterMesh)
+            
+            // Create collision scene
+            const collisionScene = new THREE.Scene()
+            collisionScene.add(collisionMesh)
+            
+            // Calculate position for this letter
+            const letterX = x + currentX + letterWidths[i] / 2
+            
+            // Add letter to world with collision
+            // Rotate 90 degrees on x-axis (Math.PI / 2 radians)
+            // Use positive mass to make it movable by the boat
+            this.objects.add({
+            base: baseScene,
+            collision: collisionScene,
+                offset: new THREE.Vector3(letterX, y, z),
+                rotation: new THREE.Euler(Math.PI / 2, 0, 0), // 90 degrees on x-axis
+                mass: mass, // Dynamic object - can be moved by boat collisions
+                sleep: false, // Start awake so it can be moved immediately
+                soundName: soundName // Play sound on collision
+            })
+            
+            // Move to next letter position
+            currentX += letterWidths[i] + letterSpacing
+        }
+    }
+
+    setGradTrackText()
+    {
+        // Create "Grad Track" text at independent position
+        this.addText3D('Grad Track', this.x, this.y - 14, 1)
+        
+        // Create "SharkByte Hackathon" text at independent position (moved 60 pixels/6 units forward from Grad Track)
+        this.addText3D('SharkByte Hackathon', this.x, this.y - 3.5, 1)
     }
 }
