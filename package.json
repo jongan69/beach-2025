@@ -11,6 +11,7 @@
     "vite-plugin-glsl": "^1.3.0"
   },
   "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.22.0",
     "@google/genai": "^0.2.0",
     "cannon": "^0.6.2",
     "dat.gui": "^0.7.9",

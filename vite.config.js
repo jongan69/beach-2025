@@ -30,7 +30,8 @@ export default defineConfig(({ mode }) => {
         // Vite automatically exposes variables prefixed with VITE_ to import.meta.env
         // For GEMINI_API_KEY (without VITE_ prefix), we need to use define
         define: {
-            'import.meta.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || '')
+            'import.meta.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
+            'import.meta.env.ELEVENLABS_API_KEY': JSON.stringify(env.ELEVENLABS_API_KEY || '')
         }
     }
 })

@@ -454,6 +454,11 @@ export default class Chat
                     {
                         // Display AI response only if no more function calls
                         this.addMessage('bot', aiResponse.text)
+                        
+                        // If this was a generate_study_flowchart response, read it aloud
+                        if (functionCall.name === 'generate_study_flowchart' && toolResponse.response?.success) {
+                            this.speakCareerPlan(aiResponse.text, functionCall.args?.career)
+                        }
                     }
                     else
                     {
@@ -738,6 +743,31 @@ export default class Chat
                 success: true,
                 message: 'PDF export feature coming soon! For now, you can copy the content from the chat.'
             }
+        }
+    }
+
+    /**
+     * Speak the career plan using Eleven Labs TTS
+     * @param {string} text - The text to speak
+     * @param {string} careerName - The career name for context
+     */
+    async speakCareerPlan(text, careerName = '')
+    {
+        try {
+            const elevenLabsService = await import('../services/eleven.js')
+            const voiceId = 'bajNon13EdhNMndG3z05'
+            
+            // Create a more natural speaking text
+            const speakingText = careerName 
+                ? `I've generated a complete study plan for ${careerName}. ${text}`
+                : text
+            
+            console.log('Chat: Speaking career plan...')
+            await elevenLabsService.default.speak(voiceId, speakingText)
+            console.log('Chat: Finished speaking career plan')
+        } catch (error) {
+            console.error('Chat: Error speaking career plan:', error)
+            // Don't show error to user - TTS is optional
         }
     }
 
