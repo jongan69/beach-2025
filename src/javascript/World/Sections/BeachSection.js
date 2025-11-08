@@ -93,7 +93,8 @@ export default class BeachSection
     {
         // Frontend URL configuration
         // Set this to your frontend URL, or use window.FRONTEND_URL if set
-        const frontendBaseUrl = window.FRONTEND_URL || 'http://localhost:3000'
+        // const frontendBaseUrl = window.FRONTEND_URL || 'http://localhost:3000'
+        const frontendBaseUrl = 'https://mdcgradtrack.netlify.app'
 
         // Career areas configuration
         // Each area represents a different career path
@@ -169,7 +170,8 @@ export default class BeachSection
 
             // Add interact handler to navigate to frontend with career parameter
             area.on('interact', () => {
-                const url = `${career.frontendUrl}/career/${career.careerId}`
+                // const url = `${career.frontendUrl}/career/${career.careerId}`
+                const url = `${career.frontendUrl}`
                 console.log(`Navigating to career: ${career.name} at ${url}`)
                 window.open(url, '_blank')
             })
