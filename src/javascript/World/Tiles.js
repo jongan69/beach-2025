@@ -19,9 +19,80 @@ export default class Tiles
         this.setModels()
     }
 
+    convertTreesToPalmTrees(_object)
+    {
+        // Traverse the object and its children recursively
+        _object.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const name = child.name.toLowerCase()
+                
+                // Get bounding box to understand the mesh's dimensions
+                const box = new THREE.Box3().setFromObject(child)
+                const size = box.getSize(new THREE.Vector3())
+                const height = Math.max(size.x, size.y, size.z)
+                const width = Math.min(size.x, size.y, size.z)
+                const heightToWidthRatio = height > 0 ? height / Math.max(width, 0.1) : 0
+                
+                // Check if this mesh is a tree (by name or geometry characteristics)
+                const isTreeByName = name.includes('tree') || 
+                                    name.includes('trunk') || 
+                                    name.includes('leaf') ||
+                                    name.includes('foliage') ||
+                                    name.includes('branch') ||
+                                    name.includes('bush') ||
+                                    name.includes('plant')
+                
+                // Check geometry characteristics: tall vertical objects are likely trees
+                const isTreeByGeometry = heightToWidthRatio > 1.5 && height > 0.5 && 
+                                        !name.includes('wall') && 
+                                        !name.includes('floor') && 
+                                        !name.includes('ground') &&
+                                        !name.includes('building') &&
+                                        !name.includes('house') &&
+                                        !name.includes('car') &&
+                                        !name.includes('road') &&
+                                        !name.includes('boat')
+                
+                const isTree = isTreeByName || isTreeByGeometry
+                
+                if (isTree) {
+                    // Transform to palm tree characteristics
+                    if (name.includes('trunk') || name.includes('stem') || 
+                        (isTreeByGeometry && !name.includes('leaf') && !name.includes('foliage'))) {
+                        // Make trunk taller and thinner (palm tree style)
+                        child.scale.y *= 1.5 // Make taller
+                        child.scale.x *= 0.7  // Make thinner
+                        child.scale.z *= 0.7  // Make thinner
+                    } else if (name.includes('leaf') || name.includes('foliage') || name.includes('branch')) {
+                        // Transform leaves into palm fronds
+                        // Make them more horizontal and spread out
+                        child.scale.y *= 0.8
+                        child.scale.x *= 1.3
+                        child.scale.z *= 1.3
+                        // Rotate to be more horizontal (palm fronds)
+                        child.rotation.x += Math.PI * 0.1
+                    } else {
+                        // Generic tree - transform to palm tree
+                        // Make taller and thinner
+                        child.scale.y *= 1.4
+                        child.scale.x *= 0.75
+                        child.scale.z *= 0.75
+                    }
+                }
+            }
+        })
+    }
+
     setModels()
     {
         this.models = {}
+
+        // Convert trees to palm trees in all tile models
+        this.convertTreesToPalmTrees(this.resources.items.tilesABase.scene)
+        this.convertTreesToPalmTrees(this.resources.items.tilesBBase.scene)
+        this.convertTreesToPalmTrees(this.resources.items.tilesCBase.scene)
+        this.convertTreesToPalmTrees(this.resources.items.tilesDBase.scene)
+        this.convertTreesToPalmTrees(this.resources.items.tilesEBase.scene)
 
         this.models.items = [
             {
