@@ -23,6 +23,11 @@ export default class BeachSection
         this.container.matrixAutoUpdate = false
         this.container.updateMatrix()
 
+        // Font loader for 3D text
+        this.fontLoader = new FontLoader()
+        this.font = null
+        this.fontLoadPromise = null
+
         this.setStatic()
         this.setTiles()
         this.setCareerAreas()
@@ -187,125 +192,182 @@ export default class BeachSection
         }
     }
 
-    setGradTrackText()
+    /**
+     * Loads the font if not already loaded and returns a promise
+     * @returns {Promise} Promise that resolves with the font
+     */
+    loadFont()
     {
-        // Create 3D text "Grad Track" with each letter as an independent physics object
-        const loader = new FontLoader()
+        if (this.font) {
+            return Promise.resolve(this.font)
+        }
         
-        // Use Three.js default font (helvetiker)
-        loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
-            const text = 'Grad Track'
-            const letters = text.split('')
-            const letterSpacing = 0.3 // Spacing between letters
-            const baseX = this.x
-            const baseY = this.y - 10
-            const baseZ = 1
-            
-            // Calculate total width to center the text
-            let totalWidth = 0
-            const letterWidths = []
-            
-            // First pass: calculate widths
-            for (let i = 0; i < letters.length; i++) {
-                const letter = letters[i]
-                if (letter === ' ') {
-                    letterWidths.push(1) // Space width
-                    totalWidth += 1
-                } else {
-                    const letterGeometry = new TextGeometry(letter, {
-                        font: font,
-                        size: 2,
-                        height: 0.5,
-                        curveSegments: 12,
-                        bevelEnabled: true,
-                        bevelThickness: 0.1,
-                        bevelSize: 0.1,
-                        bevelOffset: 0,
-                        bevelSegments: 5
-                    })
-                    letterGeometry.computeBoundingBox()
-                    const width = letterGeometry.boundingBox.max.x - letterGeometry.boundingBox.min.x
-                    letterWidths.push(width)
-                    totalWidth += width
-                    if (i < letters.length - 1) {
-                        totalWidth += letterSpacing
-                    }
+        if (this.fontLoadPromise) {
+            return this.fontLoadPromise
+        }
+        
+        this.fontLoadPromise = new Promise((resolve, reject) => {
+            this.fontLoader.load(
+                'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+                (font) => {
+                    this.font = font
+                    resolve(font)
+                },
+                undefined,
+                (error) => {
+                    reject(error)
                 }
-            }
-            
-            // Calculate starting x position to center the text
-            let currentX = -totalWidth / 2
-            
-            // Second pass: create each letter as a separate object
-            for (let i = 0; i < letters.length; i++) {
-                const letter = letters[i]
-                
-                if (letter === ' ') {
-                    // Skip spaces but account for their width
-                    currentX += letterWidths[i] + letterSpacing
-                    continue
-                }
-                
-                // Create geometry for this letter
+            )
+        })
+        
+        return this.fontLoadPromise
+    }
+
+    /**
+     * Creates 3D text at any position with independent positioning
+     * @param {string} text - The text to display
+     * @param {number} x - X position in world space
+     * @param {number} y - Y position in world space
+     * @param {number} z - Z position in world space (default: 1)
+     * @param {Object} options - Optional configuration
+     * @param {THREE.Material} options.material - Material to use (default: green material)
+     * @param {number} options.size - Text size (default: 1.5)
+     * @param {number} options.height - Text height/depth (default: 0.4)
+     * @param {number} options.letterSpacing - Spacing between letters (default: 0.3)
+     * @param {number} options.mass - Physics mass (default: 2)
+     * @param {string} options.soundName - Sound to play on collision (default: 'car-hits')
+     * @returns {Promise} Promise that resolves when text is created
+     */
+    async addText3D(text, x, y, z = 1, options = {})
+    {
+        // Load font if needed
+        const font = await this.loadFont()
+        
+        // Default options
+        const {
+            material = this.objects.materials.shades.items.green,
+            size = 1.5,
+            height = 0.4,
+            letterSpacing = 0.3,
+            mass = 2,
+            soundName = 'car-hits'
+        } = options
+        
+        const letters = text.split('')
+        
+        // Calculate total width to center the text
+        let totalWidth = 0
+        const letterWidths = []
+        
+        // First pass: calculate widths
+        for (let i = 0; i < letters.length; i++) {
+            const letter = letters[i]
+            if (letter === ' ') {
+                letterWidths.push(1) // Space width
+                totalWidth += 1
+            } else {
                 const letterGeometry = new TextGeometry(letter, {
                     font: font,
-                    size: 2,
-                    height: 0.5,
-                    curveSegments: 12,
+                    size: size,
+                    height: height,
+                    curveSegments: 16,
                     bevelEnabled: true,
-                    bevelThickness: 0.1,
-                    bevelSize: 0.1,
+                    bevelThickness: 0.15,
+                    bevelSize: 0.12,
                     bevelOffset: 0,
-                    bevelSegments: 5
+                    bevelSegments: 8
                 })
-                
-                // Center the letter geometry
                 letterGeometry.computeBoundingBox()
-                const center = new THREE.Vector3()
-                letterGeometry.boundingBox.getCenter(center)
-                letterGeometry.translate(-center.x, -center.y, -center.z)
-                
-                // Get bounding box dimensions for collision
-                const size = new THREE.Vector3()
-                letterGeometry.boundingBox.getSize(size)
-                
-                // Create visual mesh - use green material from the materials system
-                const textMaterial = this.objects.materials.shades.items.green.clone()
-                const letterMesh = new THREE.Mesh(letterGeometry, textMaterial)
-                
-                // Create collision mesh - use a box shape with proper naming for physics system
-                const collisionBoxGeometry = new THREE.BoxGeometry(1, 1, 1)
-                const collisionMesh = new THREE.Mesh(collisionBoxGeometry, new THREE.MeshBasicMaterial({ visible: false }))
-                collisionMesh.name = 'cube' // Important: name must match physics system pattern
-                collisionMesh.scale.set(size.x, size.y, size.z)
-                
-                // Create base scene for visual
-                const baseScene = new THREE.Scene()
-                baseScene.add(letterMesh)
-                
-                // Create collision scene
-                const collisionScene = new THREE.Scene()
-                collisionScene.add(collisionMesh)
-                
-                // Calculate position for this letter
-                const letterX = baseX + currentX + letterWidths[i] / 2
-                
-                // Add letter to world with collision
-                // Rotate 90 degrees on x-axis (Math.PI / 2 radians)
-                // Use positive mass to make it movable by the boat
-                this.objects.add({
-                    base: baseScene,
-                    collision: collisionScene,
-                    offset: new THREE.Vector3(letterX, baseY, baseZ),
-                    rotation: new THREE.Euler(Math.PI / 2, 0, 0), // 90 degrees on x-axis
-                    mass: 2, // Dynamic object - can be moved by boat collisions
-                    sleep: false, // Start awake so it can be moved immediately
-                    soundName: 'car-hits' // Play sound on collision
-                })
-                
-                // Move to next letter position
-                currentX += letterWidths[i] + letterSpacing
+                const width = letterGeometry.boundingBox.max.x - letterGeometry.boundingBox.min.x
+                letterWidths.push(width)
+                totalWidth += width
+                if (i < letters.length - 1) {
+                    totalWidth += letterSpacing
+                }
             }
-        })
+        }
+        
+        // Calculate starting x position to center the text
+        let currentX = -totalWidth / 2
+        
+        // Second pass: create each letter as a separate object
+        for (let i = 0; i < letters.length; i++) {
+            const letter = letters[i]
+            
+            if (letter === ' ') {
+                // Skip spaces but account for their width
+                currentX += letterWidths[i] + letterSpacing
+                continue
+            }
+            
+            // Create geometry for this letter
+            const letterGeometry = new TextGeometry(letter, {
+                font: font,
+                size: size,
+                height: height,
+                curveSegments: 12,
+                bevelEnabled: true,
+                bevelThickness: 0.1,
+                bevelSize: 0.1,
+                bevelOffset: 0,
+                bevelSegments: 5
+            })
+            
+            // Center the letter geometry
+            letterGeometry.computeBoundingBox()
+            const center = new THREE.Vector3()
+            letterGeometry.boundingBox.getCenter(center)
+            letterGeometry.translate(-center.x, -center.y, -center.z)
+            
+            // Get bounding box dimensions for collision
+            const sizeVec = new THREE.Vector3()
+            letterGeometry.boundingBox.getSize(sizeVec)
+            
+            // Create visual mesh - use provided material
+            const textMaterial = material.clone()
+            const letterMesh = new THREE.Mesh(letterGeometry, textMaterial)
+            
+            // Create collision mesh - use a box shape with proper naming for physics system
+            const collisionBoxGeometry = new THREE.BoxGeometry(1, 1, 1)
+            const collisionMesh = new THREE.Mesh(collisionBoxGeometry, new THREE.MeshBasicMaterial({ visible: false }))
+            collisionMesh.name = 'cube' // Important: name must match physics system pattern
+            collisionMesh.scale.set(sizeVec.x, sizeVec.y, sizeVec.z)
+            
+            // Create base scene for visual
+            const baseScene = new THREE.Scene()
+            baseScene.add(letterMesh)
+            
+            // Create collision scene
+            const collisionScene = new THREE.Scene()
+            collisionScene.add(collisionMesh)
+            
+            // Calculate position for this letter
+            const letterX = x + currentX + letterWidths[i] / 2
+            
+            // Add letter to world with collision
+            // Rotate 90 degrees on x-axis (Math.PI / 2 radians)
+            // Use positive mass to make it movable by the boat
+            this.objects.add({
+                base: baseScene,
+                collision: collisionScene,
+                offset: new THREE.Vector3(letterX, y, z),
+                rotation: new THREE.Euler(Math.PI / 2, 0, 0), // 90 degrees on x-axis
+                mass: mass, // Dynamic object - can be moved by boat collisions
+                sleep: false, // Start awake so it can be moved immediately
+                soundName: soundName // Play sound on collision
+            })
+            
+            // Move to next letter position
+            currentX += letterWidths[i] + letterSpacing
+        }
+    }
+
+    setGradTrackText()
+    {
+        // Create "Grad Track" text at independent position
+        this.addText3D('Grad Track', this.x, this.y - 14, 1)
+        
+        // Create "SharkByte Hackathon" text at independent position (moved 60 pixels/6 units forward from Grad Track)
+        this.addText3D('SharkByte Hackathon', this.x, this.y - 3.5, 1)
     }
 }
