@@ -141,6 +141,9 @@ export default class Resources extends EventEmitter
             { name: 'playgroundStaticCollision', source: './models/playground/static/collision.glb' },
             { name: 'playgroundStaticFloorShadow', source: './models/playground/static/floorShadow.png', type: 'texture' },
 
+            // Palm Tree
+            { name: 'palmTree', source: './models/palmTree/palm-tree.glb' },
+
             // Brick
             { name: 'brickBase', source: './models/brick/base.glb' },
             { name: 'brickCollision', source: './models/brick/collision.glb' },

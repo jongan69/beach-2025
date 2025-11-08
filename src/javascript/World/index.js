@@ -407,6 +407,7 @@ export default class World
         // Beach section - simplified scene
         this.sections.beach = new BeachSection({
             ...options,
+            physics: this.physics,
             x: 0,
             y: 0
         })
