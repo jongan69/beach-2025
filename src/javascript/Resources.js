@@ -66,11 +66,20 @@ export default class Resources extends EventEmitter
             { name: 'introMBase', source: './models/intro/m/base.glb' },
             { name: 'introMCollision', source: './models/intro/m/collision.glb' },
 
-            { name: 'introCreativeBase', source: './models/intro/creative/base.glb' },
-            { name: 'introCreativeCollision', source: './models/intro/creative/collision.glb' },
+            { name: 'introGBase', source: './models/intro/g/base.glb' },
+            { name: 'introGCollision', source: './models/intro/g/collision.glb' },
 
-            { name: 'introDevBase', source: './models/intro/dev/base.glb' },
-            { name: 'introDevCollision', source: './models/intro/dev/collision.glb' },
+            // TODO: Uncomment these when model files are added for "GRAD TRACK"
+            // { name: 'introABase', source: './models/intro/a/base.glb' },
+            // { name: 'introACollision', source: './models/intro/a/collision.glb' },
+            // { name: 'introDBase', source: './models/intro/d/base.glb' },
+            // { name: 'introDCollision', source: './models/intro/d/collision.glb' },
+            // { name: 'introTBase', source: './models/intro/t/base.glb' },
+            // { name: 'introTCollision', source: './models/intro/t/collision.glb' },
+            // { name: 'introCBase', source: './models/intro/c/base.glb' },
+            // { name: 'introCCollision', source: './models/intro/c/collision.glb' },
+            // { name: 'introKBase', source: './models/intro/k/base.glb' },
+            // { name: 'introKCollision', source: './models/intro/k/collision.glb' },
 
             // Intro
             { name: 'crossroadsStaticBase', source: './models/crossroads/static/base.glb' },

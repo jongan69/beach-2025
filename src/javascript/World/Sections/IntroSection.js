@@ -1,4 +1,6 @@
 import * as THREE from 'three'
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js'
+import { FontLoader } from 'three/addons/loaders/FontLoader.js'
 
 export default class IntroSection
 {
@@ -27,13 +29,201 @@ export default class IntroSection
         this.setTitles()
         this.setTiles()
         this.setDikes()
+
+        // Load font for text generation
+        this.font = null
+        this.titlesSet = false
+        this.loadFont()
+    }
+
+    loadFont()
+    {
+        const loader = new FontLoader()
+        // Using Three.js default font (helvetiker)
+        loader.load('https://threejs.org/examples/fonts/helvetiker_bold.typeface.json', (font) => {
+            this.font = font
+            // Set titles once font is loaded
+            if(!this.titlesSet)
+            {
+                this.setTitles()
+                this.titlesSet = true
+            }
+        })
+    }
+
+    createTextLetter(letter, materialName = 'shadeWhite')
+    {
+        if(!this.font)
+        {
+            console.warn('Font not loaded yet')
+            return null
+        }
+
+        // Create base scene
+        const baseScene = new THREE.Scene()
+        
+        // Create text geometry
+        const textGeometry = new TextGeometry(letter, {
+            font: this.font,
+            size: 1,
+            height: 0.3,
+            curveSegments: 12,
+            bevelEnabled: true,
+            bevelThickness: 0.03,
+            bevelSize: 0.02,
+            bevelOffset: 0,
+            bevelSegments: 5
+        })
+
+        // Center the geometry
+        textGeometry.computeBoundingBox()
+        const centerOffset = -0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x)
+        textGeometry.translate(centerOffset, 0, 0)
+
+        // Create base mesh with proper naming for material parser
+        const baseMesh = new THREE.Mesh(textGeometry, new THREE.MeshBasicMaterial())
+        baseMesh.name = `${materialName}_0`
+        baseScene.add(baseMesh)
+
+        // Create collision scene (simplified box geometry)
+        const collisionScene = new THREE.Scene()
+        const boxWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x
+        const boxHeight = textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y
+        const boxDepth = textGeometry.boundingBox.max.z - textGeometry.boundingBox.min.z
+        
+        // Create unit box and scale it (physics system uses mesh.scale)
+        const box = new THREE.BoxGeometry(1, 1, 1)
+        const collisionMesh = new THREE.Mesh(box, new THREE.MeshBasicMaterial({ visible: false }))
+        collisionMesh.name = 'box0' // Must match physics pattern: box, cube_, cylinder_, or sphere_
+        collisionMesh.scale.set(boxWidth, boxHeight, boxDepth)
+        collisionMesh.position.set(0, 0, 0)
+        collisionScene.add(collisionMesh)
+
+        return {
+            base: baseScene,
+            collision: collisionScene
+        }
     }
 
     setStatic()
     {
+        // Clone the base scene to avoid modifying the original
+        const baseSceneClone = this.resources.items.introStaticBase.scene.clone()
+        const collisionSceneClone = this.resources.items.introStaticCollision.scene.clone()
+
+        // Debug: Log all objects in the scene to identify fake trees
+        const logAllObjects = (object, sceneName) => {
+            console.log(`\n=== ${sceneName} Scene Objects ===`)
+            const allObjects = []
+            object.traverse((child) => {
+                if(child.name || child.type !== 'Scene')
+                {
+                    allObjects.push({
+                        name: child.name || '(unnamed)',
+                        type: child.type,
+                        position: child.position ? { x: child.position.x, y: child.position.y, z: child.position.z } : null,
+                        children: child.children ? child.children.length : 0,
+                        hasGeometry: !!child.geometry,
+                        hasMaterial: !!child.material
+                    })
+                }
+            })
+            console.table(allObjects)
+            return allObjects
+        }
+
+        // Log objects for debugging (comment out after identifying trees)
+        const baseObjects = logAllObjects(baseSceneClone, 'Base')
+        
+        // Remove all tree meshes from scenes
+        // Trees are identified by their green and brown materials/shaders
+        const removeTrees = (object) => {
+            const toRemove = []
+            object.traverse((child) => {
+                const name = child.name ? child.name.toLowerCase() : ''
+                
+                // Check for various tree-related names
+                if(name.includes('tree') || 
+                   name.includes('fake') ||
+                   name.includes('faketree') ||
+                   name.includes('fake_tree') ||
+                   name.includes('decoration') ||
+                   name.includes('deco') ||
+                   name.includes('prop') ||
+                   name.includes('background') ||
+                   name.includes('env') ||
+                   name.includes('environment') ||
+                   name.includes('foliage') ||
+                   name.includes('plant') ||
+                   name.includes('vegetation') ||
+                   name.includes('bush') ||
+                   name.includes('shrub'))
+                {
+                    toRemove.push(child)
+                }
+                
+                // Check for green or brown materials (trees typically use these colors)
+                if(child.material)
+                {
+                    const materials = Array.isArray(child.material) ? child.material : [child.material]
+                    
+                    for(const material of materials)
+                    {
+                        if(material.color)
+                        {
+                            const color = material.color
+                            const r = color.r
+                            const g = color.g
+                            const b = color.b
+                            
+                            // Check for green colors (high green, lower red/blue)
+                            const isGreen = g > 0.3 && g > r * 1.2 && g > b * 1.2
+                            
+                            // Check for brown colors (brown is typically a mix with more red/green than blue)
+                            const isBrown = r > 0.2 && g > 0.15 && b < r * 0.8 && b < g * 0.8 && 
+                                          (r + g) > b * 1.5 && r < 0.6 && g < 0.5
+                            
+                            if(isGreen || isBrown)
+                            {
+                                toRemove.push(child)
+                                break // Found a match, no need to check other materials
+                            }
+                        }
+                    }
+                }
+            })
+            
+            // Remove found trees (remove in reverse order to avoid index issues)
+            for(let i = toRemove.length - 1; i >= 0; i--)
+            {
+                const item = toRemove[i]
+                if(item.parent)
+                {
+                    console.log(`Removing object: ${item.name || '(unnamed)'} (${item.type})`)
+                    item.parent.remove(item)
+                    // Also dispose of geometry and materials if they exist
+                    if(item.geometry) item.geometry.dispose()
+                    if(item.material)
+                    {
+                        if(Array.isArray(item.material))
+                        {
+                            item.material.forEach(mat => mat.dispose())
+                        }
+                        else
+                        {
+                            item.material.dispose()
+                        }
+                    }
+                }
+            }
+        }
+
+        removeTrees(baseSceneClone)
+        removeTrees(collisionSceneClone)
+
         this.objects.add({
-            base: this.resources.items.introStaticBase.scene,
-            collision: this.resources.items.introStaticCollision.scene,
+            base: baseSceneClone,
+            collision: collisionSceneClone,
             floorShadowTexture: this.resources.items.introStaticFloorShadowTexture,
             offset: new THREE.Vector3(0, 0, 0),
             mass: 0
@@ -159,120 +349,73 @@ export default class IntroSection
 
     setTitles()
     {
-        // Title
-        this.objects.add({
-            base: this.resources.items.introBBase.scene,
-            collision: this.resources.items.introBCollision.scene,
-            offset: new THREE.Vector3(0, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            shadow: { sizeX: 1.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.4 },
-            mass: 1.5,
-            soundName: 'brick'
-        })
-        this.objects.add({
-            base: this.resources.items.introRBase.scene,
-            collision: this.resources.items.introRCollision.scene,
-            offset: new THREE.Vector3(0, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            shadow: { sizeX: 1.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.4 },
-            mass: 1.5,
-            soundName: 'brick'
-        })
-        this.objects.add({
-            base: this.resources.items.introUBase.scene,
-            collision: this.resources.items.introUCollision.scene,
-            offset: new THREE.Vector3(0, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            shadow: { sizeX: 1.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.4 },
-            mass: 1.5,
-            soundName: 'brick'
-        })
-        this.objects.add({
-            base: this.resources.items.introNBase.scene,
-            collision: this.resources.items.introNCollision.scene,
-            offset: new THREE.Vector3(0, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            duplicated: true,
-            shadow: { sizeX: 1.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.4 },
-            mass: 1.5,
-            soundName: 'brick'
-        })
-        this.objects.add({
-            base: this.resources.items.introOBase.scene,
-            collision: this.resources.items.introOCollision.scene,
-            offset: new THREE.Vector3(0, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            duplicated: true,
-            shadow: { sizeX: 1.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.4 },
-            mass: 1.5,
-            soundName: 'brick'
-        })
-        this.objects.add({
-            base: this.resources.items.introSBase.scene,
-            collision: this.resources.items.introSCollision.scene,
-            offset: new THREE.Vector3(0, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            shadow: { sizeX: 1.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.4 },
-            mass: 1.5,
-            soundName: 'brick'
-        })
-        this.objects.add({
-            base: this.resources.items.introIBase.scene,
-            collision: this.resources.items.introICollision.scene,
-            offset: new THREE.Vector3(0, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            shadow: { sizeX: 1.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.4 },
-            mass: 1.5,
-            soundName: 'brick'
-        })
-        this.objects.add({
-            base: this.resources.items.introMBase.scene,
-            collision: this.resources.items.introMCollision.scene,
-            offset: new THREE.Vector3(0, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            shadow: { sizeX: 1.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.4 },
-            mass: 1.5,
-            soundName: 'brick'
-        })
-        this.objects.add({
-            base: this.resources.items.introOBase.scene,
-            collision: this.resources.items.introOCollision.scene,
-            offset: new THREE.Vector3(3.95, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            duplicated: true,
-            shadow: { sizeX: 1.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.4 },
-            mass: 1.5,
-            soundName: 'brick'
-        })
-        this.objects.add({
-            base: this.resources.items.introNBase.scene,
-            collision: this.resources.items.introNCollision.scene,
-            offset: new THREE.Vector3(5.85, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            duplicated: true,
-            shadow: { sizeX: 1.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.4 },
-            mass: 1.5,
-            soundName: 'brick'
-        })
-        this.objects.add({
-            base: this.resources.items.introCreativeBase.scene,
-            collision: this.resources.items.introCreativeCollision.scene,
-            offset: new THREE.Vector3(0, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0.25),
-            shadow: { sizeX: 5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.3 },
-            mass: 1.5,
-            sleep: false,
-            soundName: 'brick'
-        })
-        this.objects.add({
-            base: this.resources.items.introDevBase.scene,
-            collision: this.resources.items.introDevCollision.scene,
-            offset: new THREE.Vector3(0, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            shadow: { sizeX: 2.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.3 },
-            mass: 1.5,
-            soundName: 'brick'
-        })
+        // Title - GRAD TRACK
+        // Only proceed if font is loaded
+        if(!this.font || this.titlesSet)
+        {
+            return
+        }
+
+        // Letter spacing padding (additional space between letters)
+        const letterPadding = 0.3
+        let currentX = 0
+
+        // Helper function to add a letter and return its width
+        const addLetter = (letter, offsetX = null) => {
+            const letterData = this.createTextLetter(letter, 'shadeWhite')
+            if(letterData)
+            {
+                // Get the actual width of the letter from its geometry
+                const baseMesh = letterData.base.children[0]
+                if(baseMesh && baseMesh.geometry)
+                {
+                    baseMesh.geometry.computeBoundingBox()
+                    const letterWidth = baseMesh.geometry.boundingBox.max.x - baseMesh.geometry.boundingBox.min.x
+                    
+                    const xOffset = offsetX !== null ? offsetX : currentX
+                    this.objects.add({
+                        base: letterData.base,
+                        collision: letterData.collision,
+                        offset: new THREE.Vector3(xOffset, 0, 0),
+                        rotation: new THREE.Euler(Math.PI / 2, 0, 0), // Rotate 90 degrees on X axis
+                        shadow: { sizeX: 1.5, sizeY: 1.5, offsetZ: - 0.6, alpha: 0.4 },
+                        mass: 1.5,
+                        soundName: 'brick'
+                    })
+                    
+                    if(offsetX === null)
+                    {
+                        // Move to next position: current position + letter width + padding
+                        currentX += letterWidth + letterPadding
+                    }
+                    
+                    return letterWidth
+                }
+            }
+            return 0
+        }
+
+        // GRAD
+        addLetter('G')
+        addLetter('R')
+        addLetter('A')
+        addLetter('D')
+
+        // Space between words
+        currentX += 0.5 // Additional space between words
+
+        // TRACK
+        const tWidth = addLetter('T', currentX) || 0
+        currentX += tWidth + letterPadding
+        const rWidth = addLetter('R', currentX) || 0
+        currentX += rWidth + letterPadding
+        const aWidth = addLetter('A', currentX) || 0
+        currentX += aWidth + letterPadding
+        const cWidth = addLetter('C', currentX) || 0
+        currentX += cWidth + letterPadding
+        addLetter('K', currentX)
+
+        this.titlesSet = true
     }
 
     setTiles()
