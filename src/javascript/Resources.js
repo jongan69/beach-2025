@@ -146,6 +146,9 @@ export default class Resources extends EventEmitter
 
             // Shark
             { name: 'shark', source: './models/shark/shark.glb' },
+            
+            // Sharky
+            { name: 'sharky', source: './models/sharky/sharky.glb' },
 
             // Brick
             { name: 'brickBase', source: './models/brick/base.glb' },

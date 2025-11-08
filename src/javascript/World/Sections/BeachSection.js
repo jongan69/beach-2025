@@ -38,7 +38,7 @@ export default class BeachSection
             console.error('Error creating career area labels:', err)
         })
         this.setPalmTrees()
-        this.setGradTrackText() // Text first, then shark
+        this.setGradTrackText() // Text first, then shark and sharky
     }
 
     setStatic()
@@ -521,6 +521,15 @@ export default class BeachSection
     {
         console.log('🦈🦈🦈 SETSHARK CALLED - NEW VERSION 2.0 🦈🦈🦈')
         
+        // Add the original shark
+        this.addSharkModel()
+        
+        // Add sharky
+        this.addSharkyModel()
+    }
+    
+    addSharkModel()
+    {
         // Check if shark model is available
         if (!this.resources.items.shark) {
             console.warn('Shark model not loaded')
@@ -579,17 +588,17 @@ export default class BeachSection
         
         // Position shark to the left of the 'n' in "Hackathon"
         // SharkByte Hackathon is at y = -3.5
-        // The text is about 20 units wide, 'n' is near the end at approximately x + 9
+        // The 'n' in "Hackathon" is near the end at approximately x + 9
         const sharkX = this.x + 9
         const sharkY = this.y - 3.5
         const sharkZ = 0.8
         
         shark.position.set(sharkX, sharkY, sharkZ)
         
-        // Rotate shark: flip it 180 degrees on x-axis
-        shark.rotation.x = -Math.PI / 2 // -90 degrees (upside down from normal flat position)
+        // Rotate shark to face left (toward the 'n')
+        shark.rotation.x = Math.PI / 2 // Lay flat
         shark.rotation.y = 0
-        shark.rotation.z = Math.PI / 2 // 90 degrees to face left
+        shark.rotation.z = Math.PI / 2 // Face left
         
         // Scale shark appropriately
         const scale = 0.8
@@ -612,7 +621,105 @@ export default class BeachSection
             xDegrees: (shark.rotation.x * 180 / Math.PI).toFixed(2),
             zDegrees: (shark.rotation.z * 180 / Math.PI).toFixed(2)
         })
-        console.log('Shark added to the left of the n in Hackathon')
+        console.log('🦈 Original Shark added to the left of the n in Hackathon')
+    }
+    
+    addSharkyModel()
+    {
+        console.log('🦈 Adding Sharky model')
+        
+        // Check if sharky model is available
+        if (!this.resources.items.sharky) {
+            console.warn('Sharky model not loaded')
+            return
+        }
+
+        const sharky = this.resources.items.sharky.scene.clone()
+        console.log('🦈 Sharky cloned successfully')
+        
+        // Ensure all meshes are visible and have proper materials
+        sharky.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                // Ensure mesh is visible
+                child.visible = true
+                
+                // Fix materials to ensure they're visible and respond to lighting
+                if (child.material) {
+                    // Handle material arrays
+                    const materials = Array.isArray(child.material) ? child.material : [child.material]
+                    
+                    materials.forEach((material) => {
+                        if (material) {
+                            // Ensure material is visible
+                            material.visible = true
+                            
+                            // Convert MeshBasicMaterial to MeshStandardMaterial for proper lighting
+                            if (material.type === 'MeshBasicMaterial') {
+                                const newMaterial = new THREE.MeshStandardMaterial({
+                                    color: material.color || 0x4a90e2,
+                                    map: material.map || null,
+                                    metalness: 0.3,
+                                    roughness: 0.6
+                                })
+                                if (Array.isArray(child.material)) {
+                                    const matIndex = child.material.indexOf(material)
+                                    child.material[matIndex] = newMaterial
+                                } else {
+                                    child.material = newMaterial
+                                }
+                            }
+                            
+                            // Ensure material updates
+                            material.needsUpdate = true
+                        }
+                    })
+                } else {
+                    // No material - add a default visible material
+                    child.material = new THREE.MeshStandardMaterial({
+                        color: 0x4a90e2,
+                        metalness: 0.3,
+                        roughness: 0.6
+                    })
+                }
+            }
+        })
+        
+        // Position sharky to the left of the 'S' in "SharkByte"
+        // SharkByte Hackathon is at y = -3.5
+        // The text is about 22 units wide, 'S' is at the start at approximately x - 11
+        const sharkyX = this.x - 12
+        const sharkyY = this.y - 3.5
+        const sharkyZ = 0.8
+        
+        sharky.position.set(sharkyX, sharkyY, sharkyZ)
+        
+        // Rotate sharky to face right (toward the text)
+        sharky.rotation.x = Math.PI / 2 // Lay flat
+        sharky.rotation.y = 0
+        sharky.rotation.z = -Math.PI / 2 // Face right toward the 'S'
+        
+        // Scale sharky appropriately
+        const scale = 0.8
+        sharky.scale.set(scale, scale, scale)
+        
+        // Ensure sharky itself is visible
+        sharky.visible = true
+        
+        // Force matrix update
+        sharky.updateMatrix()
+        sharky.updateMatrixWorld(true)
+        
+        this.container.add(sharky)
+        
+        console.log('Sharky positioned:', { x: sharkyX, y: sharkyY, z: sharkyZ })
+        console.log('Sharky rotation:', { 
+            x: sharky.rotation.x, 
+            y: sharky.rotation.y, 
+            z: sharky.rotation.z,
+            xDegrees: (sharky.rotation.x * 180 / Math.PI).toFixed(2),
+            zDegrees: (sharky.rotation.z * 180 / Math.PI).toFixed(2)
+        })
+        console.log('🦈 Sharky added to the left of the S in SharkByte')
     }
 
     /**
