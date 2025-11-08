@@ -29,6 +29,7 @@ export default class World
         this.scene = _options.scene
         this.renderer = _options.renderer
         this.passes = _options.passes
+        this.application = _options.application // Store application instance
 
         // Debug
         if(this.debug)
@@ -399,7 +400,8 @@ export default class World
             zones: this.zones,
             walls: this.walls,
             tiles: this.tiles,
-            debug: this.debugFolder
+            debug: this.debugFolder,
+            application: this.application // Pass application instance to sections
         }
 
         // Beach section - simplified scene

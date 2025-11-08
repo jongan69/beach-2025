@@ -7,6 +7,7 @@ import World from './World/index.js'
 import Resources from './Resources.js'
 import Camera from './Camera.js'
 import ThreejsJourney from './ThreejsJourney.js'
+import Chat from './Chat.js'
 
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
@@ -34,6 +35,7 @@ export default class Application
         this.setRenderer()
         this.setCamera()
         this.setPasses()
+        this.setChat() // Initialize chat early so it's available for sections
         this.setWorld()
         this.setTitle()
         this.setThreejsJourney()
@@ -230,7 +232,8 @@ export default class Application
             camera: this.camera,
             scene: this.scene,
             renderer: this.renderer,
-            passes: this.passes
+            passes: this.passes,
+            application: this // Pass application instance
         })
         this.scene.add(this.world.container)
     }
@@ -278,6 +281,34 @@ export default class Application
             time: this.time,
             world: this.world
         })
+    }
+
+    /**
+     * Set Chat
+     */
+    setChat()
+    {
+        // Initialize chat after DOM is fully ready
+        const initChat = () => {
+            try {
+                this.chat = new Chat()
+                console.log('Application: Chat instance created', {
+                    chatExists: !!this.chat,
+                    initialized: this.chat?.initialized
+                })
+            } catch (error) {
+                console.error('Failed to initialize Chat:', error)
+            }
+        }
+        
+        // Check if DOM is ready
+        if (document.readyState === 'loading') {
+            // DOM is still loading, wait for it
+            document.addEventListener('DOMContentLoaded', initChat)
+        } else {
+            // DOM is already ready
+            initChat()
+        }
     }
 
     /**

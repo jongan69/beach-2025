@@ -43,6 +43,26 @@
 
     <canvas class="canvas js-canvas"></canvas>
 
+    <!-- Chat Widget -->
+    <div class="chat-widget js-chat-widget">
+        <div class="chat-widget__header">
+            <h3>Course Plan Assistant</h3>
+            <button type="button" class="chat-widget__close js-chat-close">×</button>
+        </div>
+        <div class="chat-widget__messages js-chat-messages">
+            <div class="chat-message chat-message--bot">
+                <div class="chat-message__content">
+                    Hi! I'm here to help you build a course plan. What career path are you interested in?
+                </div>
+            </div>
+        </div>
+        <div class="chat-widget__input-container">
+            <input type="text" class="chat-widget__input js-chat-input" placeholder="Type your message..." />
+            <button type="button" class="chat-widget__send js-chat-send">Send</button>
+        </div>
+    </div>
+    <button type="button" class="chat-widget__toggle js-chat-toggle">💬</button>
+
     <!-- Frontend URL Configuration -->
     <!-- Uncomment and set your frontend URL here -->
     <!-- <script>

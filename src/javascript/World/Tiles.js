@@ -88,11 +88,11 @@ export default class Tiles
         this.models = {}
 
         // Convert trees to palm trees in all tile models
-        this.convertTreesToPalmTrees(this.resources.items.tilesABase.scene)
-        this.convertTreesToPalmTrees(this.resources.items.tilesBBase.scene)
-        this.convertTreesToPalmTrees(this.resources.items.tilesCBase.scene)
-        this.convertTreesToPalmTrees(this.resources.items.tilesDBase.scene)
-        this.convertTreesToPalmTrees(this.resources.items.tilesEBase.scene)
+        // this.convertTreesToPalmTrees(this.resources.items.tilesABase.scene)
+        // this.convertTreesToPalmTrees(this.resources.items.tilesBBase.scene)
+        // this.convertTreesToPalmTrees(this.resources.items.tilesCBase.scene)
+        // this.convertTreesToPalmTrees(this.resources.items.tilesDBase.scene)
+        // this.convertTreesToPalmTrees(this.resources.items.tilesEBase.scene)
 
         this.models.items = [
             {

@@ -17,6 +17,7 @@ export default class BeachSection
         this.debug = _options.debug
         this.x = _options.x
         this.y = _options.y
+        this.application = _options.application // Store application instance
 
         // Set up
         this.container = new THREE.Object3D()
@@ -94,11 +95,6 @@ export default class BeachSection
 
     setCareerAreas()
     {
-        // Frontend URL configuration
-        // Set this to your frontend URL, or use window.FRONTEND_URL if set
-        // const frontendBaseUrl = window.FRONTEND_URL || 'http://localhost:3000'
-        const frontendBaseUrl = 'https://mdcgradtrack.netlify.app'
-
         // Career areas configuration
         // Each area represents a different career path
         const careerAreas = [
@@ -106,57 +102,49 @@ export default class BeachSection
                 name: 'Software Engineering',
                 position: new THREE.Vector2(this.x, this.y - 30),
                 halfExtents: new THREE.Vector2(3, 3),
-                careerId: 'software-engineering',
-                frontendUrl: frontendBaseUrl
+                careerId: 'software-engineering'
             },
             {
                 name: 'Data Science',
                 position: new THREE.Vector2(this.x + 20, this.y - 20),
                 halfExtents: new THREE.Vector2(3, 3),
-                careerId: 'data-science',
-                frontendUrl: frontendBaseUrl
+                careerId: 'data-science'
             },
             {
                 name: 'Business',
                 position: new THREE.Vector2(this.x + 30, this.y),
                 halfExtents: new THREE.Vector2(3, 3),
-                careerId: 'business',
-                frontendUrl: frontendBaseUrl
+                careerId: 'business'
             },
             {
                 name: 'Design',
                 position: new THREE.Vector2(this.x + 20, this.y + 20),
                 halfExtents: new THREE.Vector2(3, 3),
-                careerId: 'design',
-                frontendUrl: frontendBaseUrl
+                careerId: 'design'
             },
             {
                 name: 'Healthcare',
                 position: new THREE.Vector2(this.x, this.y + 30),
                 halfExtents: new THREE.Vector2(3, 3),
-                careerId: 'healthcare',
-                frontendUrl: frontendBaseUrl
+                careerId: 'healthcare'
             },
             {
                 name: 'Finance',
                 position: new THREE.Vector2(this.x - 20, this.y + 20),
                 halfExtents: new THREE.Vector2(3, 3),
-                careerId: 'finance',
-                frontendUrl: frontendBaseUrl
+                careerId: 'finance'
             },
             {
                 name: 'Education',
                 position: new THREE.Vector2(this.x - 30, this.y),
                 halfExtents: new THREE.Vector2(3, 3),
-                careerId: 'education',
-                frontendUrl: frontendBaseUrl
+                careerId: 'education'
             },
             {
                 name: 'Engineering',
                 position: new THREE.Vector2(this.x - 20, this.y - 20),
                 halfExtents: new THREE.Vector2(3, 3),
-                careerId: 'engineering',
-                frontendUrl: frontendBaseUrl
+                careerId: 'engineering'
             }
         ]
 
@@ -171,12 +159,52 @@ export default class BeachSection
                 active: true
             })
 
-            // Add interact handler to navigate to frontend with career parameter
-            area.on('interact', () => {
-                // const url = `${career.frontendUrl}/career/${career.careerId}`
-                const url = `${career.frontendUrl}`
-                console.log(`Navigating to career: ${career.name} at ${url}`)
-                window.open(url, '_blank')
+            // Add interact handler to open chat with career context
+            area.on('interact', async () => {
+                console.log(`Opening chat for career: ${career.name}`)
+                
+                // Use application instance passed to BeachSection, or fallback to window.application
+                const app = this.application || window.application
+                
+                console.log('BeachSection: Checking chat availability', {
+                    application: !!app,
+                    chat: !!app?.chat,
+                    initialized: app?.chat?.initialized
+                })
+                
+                // Wait for chat to be available with retry logic
+                let retries = 0
+                const maxRetries = 20 // Increased retries
+                
+                while (retries < maxRetries) {
+                    if (app && app.chat) {
+                        // Check if chat is initialized, if not try to reinitialize
+                        if (!app.chat.initialized) {
+                            console.log('BeachSection: Chat exists but not initialized, waiting...')
+                            await new Promise(resolve => setTimeout(resolve, 100))
+                            retries++
+                            continue
+                        }
+                        
+                        try {
+                            await app.chat.openWithCareer(career.name, career.careerId)
+                            return
+                        } catch (error) {
+                            console.error('Error opening chat:', error)
+                            return
+                        }
+                    }
+                    
+                    // Wait a bit before retrying
+                    await new Promise(resolve => setTimeout(resolve, 100))
+                    retries++
+                }
+                
+                console.error('Chat instance not available after retries', {
+                    application: !!app,
+                    chat: !!app?.chat,
+                    initialized: app?.chat?.initialized
+                })
             })
 
             // Store career info for potential future use
