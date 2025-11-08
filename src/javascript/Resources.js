@@ -144,6 +144,9 @@ export default class Resources extends EventEmitter
             // Palm Tree
             { name: 'palmTree', source: './models/palmTree/palm-tree.glb' },
 
+            // Shark
+            { name: 'shark', source: './models/shark/shark.glb' },
+
             // Brick
             { name: 'brickBase', source: './models/brick/base.glb' },
             { name: 'brickCollision', source: './models/brick/collision.glb' },

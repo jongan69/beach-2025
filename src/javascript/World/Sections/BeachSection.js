@@ -34,7 +34,7 @@ export default class BeachSection
         this.setTiles()
         this.setCareerAreas()
         this.setPalmTrees()
-        this.setGradTrackText()
+        this.setGradTrackText() // Text first, then shark
     }
 
     setStatic()
@@ -408,6 +408,104 @@ export default class BeachSection
         })
     }
 
+    setShark()
+    {
+        console.log('🦈🦈🦈 SETSHARK CALLED - NEW VERSION 2.0 🦈🦈🦈')
+        
+        // Check if shark model is available
+        if (!this.resources.items.shark) {
+            console.warn('Shark model not loaded')
+            return
+        }
+
+        const shark = this.resources.items.shark.scene.clone()
+        console.log('🦈 Shark cloned successfully')
+        
+        // Ensure all meshes are visible and have proper materials
+        shark.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                // Ensure mesh is visible
+                child.visible = true
+                
+                // Fix materials to ensure they're visible and respond to lighting
+                if (child.material) {
+                    // Handle material arrays
+                    const materials = Array.isArray(child.material) ? child.material : [child.material]
+                    
+                    materials.forEach((material) => {
+                        if (material) {
+                            // Ensure material is visible
+                            material.visible = true
+                            
+                            // Convert MeshBasicMaterial to MeshStandardMaterial for proper lighting
+                            if (material.type === 'MeshBasicMaterial') {
+                                const newMaterial = new THREE.MeshStandardMaterial({
+                                    color: material.color || 0x4a90e2,
+                                    map: material.map || null,
+                                    metalness: 0.3,
+                                    roughness: 0.6
+                                })
+                                if (Array.isArray(child.material)) {
+                                    const matIndex = child.material.indexOf(material)
+                                    child.material[matIndex] = newMaterial
+                                } else {
+                                    child.material = newMaterial
+                                }
+                            }
+                            
+                            // Ensure material updates
+                            material.needsUpdate = true
+                        }
+                    })
+                } else {
+                    // No material - add a default visible material
+                    child.material = new THREE.MeshStandardMaterial({
+                        color: 0x4a90e2,
+                        metalness: 0.3,
+                        roughness: 0.6
+                    })
+                }
+            }
+        })
+        
+        // Position shark to the left of the 'n' in "Hackathon"
+        // SharkByte Hackathon is at y = -3.5
+        // The text is about 20 units wide, 'n' is near the end at approximately x + 9
+        const sharkX = this.x + 9
+        const sharkY = this.y - 3.5
+        const sharkZ = 0.8
+        
+        shark.position.set(sharkX, sharkY, sharkZ)
+        
+        // Rotate shark: flip it 180 degrees on x-axis
+        shark.rotation.x = -Math.PI / 2 // -90 degrees (upside down from normal flat position)
+        shark.rotation.y = 0
+        shark.rotation.z = Math.PI / 2 // 90 degrees to face left
+        
+        // Scale shark appropriately
+        const scale = 0.8
+        shark.scale.set(scale, scale, scale)
+        
+        // Ensure the shark itself is visible
+        shark.visible = true
+        
+        // Force matrix update
+        shark.updateMatrix()
+        shark.updateMatrixWorld(true)
+        
+        this.container.add(shark)
+        
+        console.log('Shark positioned:', { x: sharkX, y: sharkY, z: sharkZ })
+        console.log('Shark rotation:', { 
+            x: shark.rotation.x, 
+            y: shark.rotation.y, 
+            z: shark.rotation.z,
+            xDegrees: (shark.rotation.x * 180 / Math.PI).toFixed(2),
+            zDegrees: (shark.rotation.z * 180 / Math.PI).toFixed(2)
+        })
+        console.log('Shark added to the left of the n in Hackathon')
+    }
+
     /**
      * Loads the font if not already loaded and returns a promise
      * @returns {Promise} Promise that resolves with the font
@@ -578,12 +676,15 @@ export default class BeachSection
         }
     }
 
-    setGradTrackText()
+    async setGradTrackText()
     {
         // Create "Grad Track" text at independent position
-        this.addText3D('Grad Track', this.x, this.y - 14, 1)
+        await this.addText3D('Grad Track', this.x, this.y - 14, 1)
         
         // Create "SharkByte Hackathon" text at independent position (moved 60 pixels/6 units forward from Grad Track)
-        this.addText3D('SharkByte Hackathon', this.x, this.y - 3.5, 1)
+        await this.addText3D('SharkByte Hackathon', this.x, this.y - 3.5, 1)
+        
+        // After text is created, add the shark
+        this.setShark()
     }
 }
