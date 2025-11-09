@@ -120,6 +120,22 @@ const tools = [
             },
             required: ['major', 'targetUniversity'],
         },
+    },
+    {
+        name: 'calculate_degree_cost',
+        description: 'Calculates the total cost of a degree plan for one or more universities using the College Financial API. Can get costs for a single university, compare multiple universities, or get program-specific costs.',
+        parameters: {
+            type: Type.OBJECT,
+            properties: {
+                university: { type: Type.STRING, description: 'The name of the university, e.g., "MIT", "University of Florida". Required for single university or program cost queries.' },
+                universities: { type: Type.STRING, description: 'Comma-separated list of university names for comparison (up to 10). Use this instead of "university" when comparing multiple schools.' },
+                program: { type: Type.STRING, description: 'Optional. The field of study or program name, e.g., "Computer Science", "Business".' },
+                degree: { type: Type.STRING, description: 'Optional. Degree level - "Associate", "Bachelor", "Master", etc. Defaults to "Bachelor".' },
+                years: { type: Type.STRING, description: 'Optional. Number of years to complete the degree as a string, e.g., "2", "4". Defaults to "4".' },
+                adjustInflation: { type: Type.BOOLEAN, description: 'Optional. Whether to adjust costs for inflation over the degree period. Defaults to false.' },
+            },
+            required: [],
+        },
     }
 ];
 
@@ -457,4 +473,129 @@ export const getTransferOptions = async (major, targetUniversity) => {
     }
 
     return resultText;
+};
+
+/**
+ * Calculate degree costs using the College Financial API
+ * Supports three endpoints: /degree-cost, /compare, /program-cost
+ * @param {Object} params - Parameters for the API call
+ * @param {string} params.university - Single university name
+ * @param {string} params.universities - Comma-separated list of universities for comparison
+ * @param {string} params.program - Optional program/field of study
+ * @param {string} params.degree - Optional degree level (default: "Bachelor")
+ * @param {string} params.years - Optional number of years as string (default: "4")
+ * @param {boolean} params.adjustInflation - Optional inflation adjustment (default: false)
+ * @returns {Promise<string>} Formatted cost information
+ */
+export const getDegreeCost = async (params) => {
+    const baseUrl = 'https://college-financial-api.gradtrack.workers.dev';
+    let url;
+    const queryParams = new URLSearchParams();
+
+    // Determine which endpoint to use
+    if (params.universities) {
+        // Use /compare endpoint for multiple universities
+        url = `${baseUrl}/compare`;
+        queryParams.append('universities', params.universities);
+    } else if (params.program && params.university) {
+        // Use /program-cost endpoint for program-specific costs
+        url = `${baseUrl}/program-cost`;
+        queryParams.append('university', params.university);
+        queryParams.append('program', params.program);
+    } else if (params.university) {
+        // Use /degree-cost endpoint for single university
+        url = `${baseUrl}/degree-cost`;
+        queryParams.append('university', params.university);
+    } else {
+        throw new Error('Either "university" or "universities" parameter is required');
+    }
+
+    // Add optional parameters
+    if (params.degree) {
+        queryParams.append('degree', params.degree);
+    }
+    if (params.years) {
+        queryParams.append('years', params.years);
+    }
+    if (params.adjustInflation !== undefined) {
+        queryParams.append('adjust_inflation', params.adjustInflation.toString());
+    }
+
+    const fullUrl = `${url}?${queryParams.toString()}`;
+    
+    try {
+        const response = await fetch(fullUrl);
+        
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Format the response for display
+        let formattedResponse = '';
+
+        if (data.comparisons) {
+            // Comparison response
+            formattedResponse = `**Degree Cost Comparison**\n\n`;
+            formattedResponse += `Degree Level: ${data.degree}\n`;
+            formattedResponse += `Years: ${data.years}\n`;
+            formattedResponse += `Inflation Adjusted: ${data.inflation_adjusted ? 'Yes' : 'No'}\n\n`;
+            
+            if (data.cheapest_in_state) {
+                formattedResponse += `💰 Cheapest In-State: ${data.cheapest_in_state}\n`;
+            }
+            if (data.cheapest_out_state) {
+                formattedResponse += `💰 Cheapest Out-of-State: ${data.cheapest_out_state}\n`;
+            }
+            formattedResponse += '\n**Cost Breakdown:**\n\n';
+
+            data.comparisons.forEach((comparison) => {
+                formattedResponse += `**${comparison.university}**\n`;
+                formattedResponse += `  In-State Total: $${comparison.in_state_total.toLocaleString()}\n`;
+                formattedResponse += `  Out-of-State Total: $${comparison.out_of_state_total.toLocaleString()}\n`;
+                if (comparison.breakdown) {
+                    formattedResponse += `  - Tuition (In-State): $${comparison.breakdown.tuition_in_state?.toLocaleString() || 'N/A'}\n`;
+                    formattedResponse += `  - Tuition (Out-of-State): $${comparison.breakdown.tuition_out_state?.toLocaleString() || 'N/A'}\n`;
+                    formattedResponse += `  - Room & Board: $${comparison.breakdown.room_board?.toLocaleString() || 'N/A'}\n`;
+                    formattedResponse += `  - Other Expenses: $${comparison.breakdown.other_expenses?.toLocaleString() || 'N/A'}\n`;
+                }
+                formattedResponse += '\n';
+            });
+        } else {
+            // Single university or program response
+            formattedResponse = `**Degree Cost Estimate**\n\n`;
+            formattedResponse += `University: ${data.university}\n`;
+            if (data.program) {
+                formattedResponse += `Program: ${data.program}\n`;
+            }
+            formattedResponse += `Degree Level: ${data.degree}\n`;
+            formattedResponse += `Years: ${data.years}\n`;
+            formattedResponse += `Inflation Adjusted: ${data.inflation_adjusted ? 'Yes' : 'No'}\n\n`;
+            
+            formattedResponse += `**Total Costs:**\n`;
+            formattedResponse += `  In-State: $${data.in_state_total.toLocaleString()}\n`;
+            formattedResponse += `  Out-of-State: $${data.out_of_state_total.toLocaleString()}\n\n`;
+            
+            if (data.breakdown) {
+                formattedResponse += `**Cost Breakdown:**\n`;
+                formattedResponse += `  Tuition (In-State): $${data.breakdown.tuition_in_state?.toLocaleString() || 'N/A'}\n`;
+                formattedResponse += `  Tuition (Out-of-State): $${data.breakdown.tuition_out_state?.toLocaleString() || 'N/A'}\n`;
+                formattedResponse += `  Room & Board: $${data.breakdown.room_board?.toLocaleString() || 'N/A'}\n`;
+                formattedResponse += `  Other Expenses: $${data.breakdown.other_expenses?.toLocaleString() || 'N/A'}\n`;
+            }
+
+            if (data.program_data) {
+                formattedResponse += '\n';
+                if (data.program_data.note) {
+                    formattedResponse += `*${data.program_data.note}*\n`;
+                }
+            }
+        }
+
+        return formattedResponse;
+    } catch (error) {
+        console.error('Error fetching degree cost:', error);
+        throw new Error(`Failed to calculate degree cost: ${error.message}`);
+    }
 };

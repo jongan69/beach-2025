@@ -1,4 +1,4 @@
-import { initializeChat, sendMessageToAI } from '../services/gemini.js'
+import { initializeChat, sendMessageToAI, getDegreeCost } from '../services/gemini.js'
 import elevenLabsService from '../services/eleven.js'
 
 export default class Chat
@@ -432,6 +432,9 @@ export default class Chat
                     case 'offer_pdf_export':
                         toolResponse = await this.handleOfferPDFExport(functionCall)
                         break
+                    case 'calculate_degree_cost':
+                        toolResponse = await this.handleCalculateDegreeCost(functionCall)
+                        break
                     default:
                         toolResponse = {
                             id: functionCall.id,
@@ -525,23 +528,33 @@ export default class Chat
                 args.bachelorsDegree
             )
 
-            // Format the course data into a readable text summary for the AI to present
-            let coursesSummary = `\n\nCOMPLETE COURSE BREAKDOWN:\n\n`
+            // Determine degree level and years based on the plan
+            const isAssociateOnly = !args.targetUniversity
+            const degreeLevel = isAssociateOnly ? 'Associate' : 'Bachelor'
+            const years = isAssociateOnly ? '2' : '4'
             
-            flowchartData.plans.forEach(plan => {
-                coursesSummary += `${plan.institution} - ${plan.degree}\n`
-                coursesSummary += `${'='.repeat(60)}\n\n`
-                
-                plan.timeline.forEach(term => {
-                    coursesSummary += `${term.term}:\n`
-                    term.courses.forEach(course => {
-                        coursesSummary += `  • ${course}\n`
-                    })
-                    coursesSummary += `\n`
-                })
-                
-                coursesSummary += `\n`
-            })
+            // Get cost information for Miami Dade College (first institution in the plan)
+            let costInfo = null
+            try {
+                const costParams = {
+                    university: 'Miami Dade College',
+                    degree: isAssociateOnly ? 'Associate' : undefined,
+                    years: isAssociateOnly ? '2' : undefined,
+                    adjustInflation: false
+                }
+                costInfo = await getDegreeCost(costParams)
+                console.log('Chat: Retrieved cost information for Miami Dade College')
+            } catch (costError) {
+                console.warn('Chat: Failed to retrieve cost information:', costError)
+                // Don't fail the whole operation if cost fetch fails
+            }
+
+            // Build the response message
+            let message = `I've generated a ${args.targetUniversity ? '4-year' : '2-year'} study plan for ${args.career}. The plan includes ${flowchartData.plans.length} degree plan(s) with detailed course timelines.`
+            
+            if (costInfo) {
+                message += `\n\n${costInfo}`
+            }
 
             return {
                 id: functionCall.id,
@@ -549,8 +562,8 @@ export default class Chat
                 response: {
                     success: true,
                     data: flowchartData,
-                    coursesSummary: coursesSummary,
-                    message: `Successfully generated a ${args.targetUniversity ? '4-year' : '2-year'} study plan for ${args.career}. The data includes ${flowchartData.plans.length} degree plan(s) with complete course timelines. Present this full breakdown to the user now.`
+                    costInfo: costInfo,
+                    message: message
                 }
             }
         }
@@ -762,6 +775,36 @@ export default class Chat
             response: {
                 success: true,
                 message: 'PDF export feature coming soon! For now, you can copy the content from the chat.'
+            }
+        }
+    }
+
+    async handleCalculateDegreeCost(functionCall)
+    {
+        const args = functionCall.args
+        
+        try
+        {
+            const costInfo = await getDegreeCost(args)
+
+            return {
+                id: functionCall.id,
+                name: 'calculate_degree_cost',
+                response: {
+                    success: true,
+                    costInfo: costInfo
+                }
+            }
+        }
+        catch(error)
+        {
+            return {
+                id: functionCall.id,
+                name: 'calculate_degree_cost',
+                response: {
+                    success: false,
+                    error: error.message || 'Failed to calculate degree cost'
+                }
             }
         }
     }
