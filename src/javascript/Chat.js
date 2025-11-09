@@ -41,6 +41,7 @@ export default class Chat
         this.isOpen = false
         this.isLoading = false
         this.initialized = true
+        this.currentFlowchartData = null // Store flowchart data for PDF export
 
         // Initialize
         this.setToggle()
@@ -462,8 +463,13 @@ export default class Chat
                         // Display AI response only if no more function calls
                         this.addMessage('bot', aiResponse.text)
                         
-                        // If this was a generate_study_flowchart response, read it aloud
+                        // If this was a generate_study_flowchart response, render flowchart and read it aloud
                         if (functionCall.name === 'generate_study_flowchart' && toolResponse.response?.success) {
+                            const flowchartData = toolResponse.response.data
+                            if (flowchartData) {
+                                this.currentFlowchartData = flowchartData
+                                this.renderFlowchart(flowchartData)
+                            }
                             this.speakCareerPlan(aiResponse.text, functionCall.args?.career)
                         }
                     }
@@ -770,14 +776,38 @@ export default class Chat
 
     async handleOfferPDFExport(functionCall)
     {
-        // For now, just acknowledge the request
-        // In a full implementation, you'd trigger PDF generation/download
-        return {
-            id: functionCall.id,
-            name: 'offer_pdf_export',
-            response: {
-                success: true,
-                message: 'PDF export feature coming soon! For now, you can copy the content from the chat.'
+        try {
+            if (!this.currentFlowchartData) {
+                return {
+                    id: functionCall.id,
+                    name: 'offer_pdf_export',
+                    response: {
+                        success: false,
+                        error: 'No flowchart data available to export. Please generate a study plan first.'
+                    }
+                }
+            }
+
+            // Generate PDF
+            await this.generatePDF(this.currentFlowchartData)
+            
+            return {
+                id: functionCall.id,
+                name: 'offer_pdf_export',
+                response: {
+                    success: true,
+                    message: 'PDF has been generated and downloaded successfully!'
+                }
+            }
+        } catch (error) {
+            console.error('Error generating PDF:', error)
+            return {
+                id: functionCall.id,
+                name: 'offer_pdf_export',
+                response: {
+                    success: false,
+                    error: error.message || 'Failed to generate PDF'
+                }
             }
         }
     }
@@ -839,6 +869,238 @@ export default class Chat
                     error: error.message || 'Failed to search articulation documents'
                 }
             }
+        }
+    }
+
+    /**
+     * Render flowchart HTML in chat messages
+     * @param {Object} flowchartData - The flowchart data to render
+     */
+    renderFlowchart(flowchartData)
+    {
+        if (!this.$messages || !flowchartData) return
+
+        const messageDiv = document.createElement('div')
+        messageDiv.className = 'chat-message chat-message--bot'
+        
+        const contentDiv = document.createElement('div')
+        contentDiv.className = 'chat-message__content chat-flowchart-container'
+        
+        // Create flowchart HTML structure
+        const flowchartHTML = this.createFlowchartHTML(flowchartData)
+        contentDiv.innerHTML = flowchartHTML
+        
+        // Set up event delegation for download button
+        const downloadBtn = contentDiv.querySelector('.flowchart-download-btn')
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', (e) => {
+                e.stopPropagation()
+                this.downloadFlowchartPDF(downloadBtn)
+            })
+        }
+        
+        messageDiv.appendChild(contentDiv)
+        this.$messages.appendChild(messageDiv)
+        
+        // Scroll to bottom
+        this.$messages.scrollTop = this.$messages.scrollHeight
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     * @param {string} text - Text to escape
+     * @returns {string} Escaped text
+     */
+    escapeHTML(text)
+    {
+        const div = document.createElement('div')
+        div.textContent = text
+        return div.innerHTML
+    }
+
+    /**
+     * Create HTML structure for flowchart
+     * @param {Object} flowchartData - The flowchart data
+     * @returns {string} HTML string
+     */
+    createFlowchartHTML(flowchartData)
+    {
+        const { career, plans } = flowchartData
+        
+        let html = `
+            <div class="flowchart-wrapper" data-flowchart-id="${Date.now()}">
+                <div class="flowchart-header">
+                    <h3 class="flowchart-title">${this.escapeHTML(career)}</h3>
+                    <button class="flowchart-download-btn">
+                        📥 Download PDF
+                    </button>
+                </div>
+                <div class="flowchart-content">
+        `
+        
+        plans.forEach((plan, planIndex) => {
+            html += `
+                <div class="flowchart-plan">
+                    <div class="flowchart-institution">
+                        <div class="flowchart-dot flowchart-dot--institution"></div>
+                        <div class="flowchart-institution-info">
+                            <h4>${this.escapeHTML(plan.institution)}</h4>
+                            <p>${this.escapeHTML(plan.degree)}</p>
+                        </div>
+                    </div>
+            `
+            
+            plan.timeline.forEach((term, termIndex) => {
+                html += `
+                    <div class="flowchart-term">
+                        <div class="flowchart-dot flowchart-dot--term"></div>
+                        <div class="flowchart-term-card">
+                            <h4 class="flowchart-term-title">${this.escapeHTML(term.term)}</h4>
+                            <div class="flowchart-courses">
+                                <h5 class="flowchart-courses-title">📚 Courses</h5>
+                                <ul class="flowchart-courses-list">
+                `
+                
+                term.courses.forEach(course => {
+                    html += `<li class="flowchart-course">${this.escapeHTML(course)}</li>`
+                })
+                
+                html += `
+                                </ul>
+                            </div>
+                        </div>
+                `
+                
+                // Add arrow if not the last term of the last plan
+                if (!(planIndex === plans.length - 1 && termIndex === plan.timeline.length - 1)) {
+                    html += `<div class="flowchart-arrow">↓</div>`
+                }
+                
+                html += `</div>`
+            })
+            
+            html += `</div>`
+        })
+        
+        html += `
+                </div>
+            </div>
+        `
+        
+        return html
+    }
+
+    /**
+     * Generate PDF from flowchart data
+     * @param {Object} flowchartData - The flowchart data to convert to PDF
+     */
+    async generatePDF(flowchartData)
+    {
+        // Check if libraries are loaded
+        if (typeof window.jspdf === 'undefined' || typeof window.html2canvas === 'undefined') {
+            throw new Error('PDF generation libraries not loaded. Please refresh the page.')
+        }
+
+        // Create a temporary container for PDF generation
+        const tempContainer = document.createElement('div')
+        tempContainer.style.position = 'absolute'
+        tempContainer.style.left = '-9999px'
+        tempContainer.style.width = '800px'
+        tempContainer.style.padding = '20px'
+        tempContainer.style.backgroundColor = '#ffffff'
+        tempContainer.style.fontFamily = 'Arial, sans-serif'
+        tempContainer.style.color = '#333333'
+        
+        // Create flowchart HTML for PDF
+        tempContainer.innerHTML = this.createFlowchartHTML(flowchartData)
+        document.body.appendChild(tempContainer)
+        
+        try {
+            // Wait a bit for rendering
+            await new Promise(resolve => setTimeout(resolve, 200))
+            
+            // Convert to canvas
+            const canvas = await window.html2canvas(tempContainer, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+                windowWidth: tempContainer.scrollWidth,
+                windowHeight: tempContainer.scrollHeight
+            })
+            
+            // Create PDF - access jsPDF correctly
+            let jsPDF
+            if (window.jspdf && window.jspdf.jsPDF) {
+                jsPDF = window.jspdf.jsPDF
+            } else if (window.jspdf) {
+                jsPDF = window.jspdf
+            } else {
+                throw new Error('jsPDF library not found')
+            }
+            
+            const pdf = new jsPDF('p', 'mm', 'a4')
+            const pdfWidth = pdf.internal.pageSize.getWidth()
+            const pdfHeight = pdf.internal.pageSize.getHeight()
+            const canvasWidth = canvas.width
+            const canvasHeight = canvas.height
+            const ratio = canvasWidth / canvasHeight
+            const imgWidth = pdfWidth - 20 // 10mm margin on each side
+            const imgHeight = imgWidth / ratio
+            
+            let heightLeft = imgHeight
+            let position = 10 // Start 10mm from top
+            const pageHeight = pdfHeight - 20 // Leave 10mm margin
+            
+            // Add first page
+            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, position, imgWidth, imgHeight)
+            heightLeft -= pageHeight
+            
+            // Add additional pages if needed
+            while (heightLeft > 0) {
+                position = heightLeft - imgHeight + 10
+                pdf.addPage()
+                pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, position, imgWidth, imgHeight)
+                heightLeft -= pageHeight
+            }
+            
+            // Generate filename
+            const filename = `study-plan-${flowchartData.career.toLowerCase().replace(/\s+/g, '-')}.pdf`
+            pdf.save(filename)
+        } finally {
+            // Clean up temporary container
+            if (tempContainer.parentNode) {
+                document.body.removeChild(tempContainer)
+            }
+        }
+    }
+
+    /**
+     * Download flowchart PDF (called from button click)
+     * @param {HTMLElement} button - The button that was clicked
+     */
+    async downloadFlowchartPDF(button)
+    {
+        if (!this.currentFlowchartData) {
+            this.addMessage('bot', 'No flowchart data available to download.')
+            return
+        }
+        
+        button.disabled = true
+        button.textContent = 'Generating...'
+        
+        try {
+            await this.generatePDF(this.currentFlowchartData)
+            button.textContent = '✅ Downloaded!'
+            setTimeout(() => {
+                button.textContent = '📥 Download PDF'
+                button.disabled = false
+            }, 2000)
+        } catch (error) {
+            console.error('Error generating PDF:', error)
+            this.addMessage('bot', `Error generating PDF: ${error.message}`)
+            button.textContent = '📥 Download PDF'
+            button.disabled = false
         }
     }
 

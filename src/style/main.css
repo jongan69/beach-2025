@@ -564,3 +564,194 @@ html
         left: 20px;
     }
 }
+
+/* Flowchart Styles */
+.chat-flowchart-container
+{
+    max-width: 100% !important;
+    padding: 0 !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 0.8) !important;
+    color: #333 !important;
+}
+
+.flowchart-wrapper
+{
+    padding: 16px;
+    font-family: 'Comic Neue', cursive;
+}
+
+.flowchart-header
+{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(254, 174, 105, 0.3);
+}
+
+.flowchart-title
+{
+    font-size: 18px;
+    font-weight: 700;
+    color: #feae69;
+    margin: 0;
+}
+
+.flowchart-download-btn
+{
+    padding: 8px 16px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Comic Neue', cursive;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    white-space: nowrap;
+}
+
+.flowchart-download-btn:hover
+{
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.flowchart-download-btn:disabled
+{
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.flowchart-content
+{
+    position: relative;
+    padding-left: 24px;
+}
+
+.flowchart-content::before
+{
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(254, 174, 105, 0.3);
+}
+
+.flowchart-plan
+{
+    margin-bottom: 24px;
+}
+
+.flowchart-institution
+{
+    position: relative;
+    margin-bottom: 20px;
+    padding-left: 8px;
+}
+
+.flowchart-dot
+{
+    position: absolute;
+    left: -20px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 3px solid white;
+    z-index: 1;
+}
+
+.flowchart-dot--institution
+{
+    background: #4CAF50;
+}
+
+.flowchart-dot--term
+{
+    background: #2196F3;
+}
+
+.flowchart-institution-info h4
+{
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 4px 0;
+}
+
+.flowchart-institution-info p
+{
+    font-size: 13px;
+    color: #666;
+    margin: 0;
+}
+
+.flowchart-term
+{
+    position: relative;
+    margin-bottom: 20px;
+    padding-left: 8px;
+}
+
+.flowchart-term-card
+{
+    background: rgba(255, 255, 255, 0.8);
+    padding: 12px;
+    border-radius: 8px;
+    border: 2px solid rgba(254, 174, 105, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.flowchart-term-title
+{
+    font-size: 15px;
+    font-weight: 700;
+    color: #2196F3;
+    margin: 0 0 12px 0;
+}
+
+.flowchart-courses-title
+{
+    font-size: 13px;
+    font-weight: 700;
+    color: #666;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.flowchart-courses-list
+{
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.flowchart-course
+{
+    font-size: 13px;
+    color: #333;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    background: rgba(254, 174, 105, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid #feae69;
+}
+
+.flowchart-arrow
+{
+    position: absolute;
+    left: -16px;
+    margin-top: 8px;
+    color: rgba(254, 174, 105, 0.5);
+    font-size: 16px;
+    font-weight: 700;
+}

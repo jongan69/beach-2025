@@ -292,6 +292,8 @@ export default class Application
         const initChat = () => {
             try {
                 this.chat = new Chat()
+                // Make chat instance globally accessible for PDF generation
+                window.chatInstance = this.chat
                 console.log('Application: Chat instance created', {
                     chatExists: !!this.chat,
                     initialized: this.chat?.initialized
