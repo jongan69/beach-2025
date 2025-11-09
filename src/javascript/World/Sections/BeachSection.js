@@ -72,7 +72,7 @@ export default class BeachSection
         // Path to Data Science (Northeast)
         this.tiles.add({
             start: new THREE.Vector2(this.x, this.y),
-            delta: new THREE.Vector2(20, - 20)
+            delta: new THREE.Vector2(28, - 20)
         })
 
         // Path to Business (East)
@@ -108,7 +108,7 @@ export default class BeachSection
         // Path to Engineering (Northwest)
         this.tiles.add({
             start: new THREE.Vector2(this.x, this.y),
-            delta: new THREE.Vector2(- 20, - 20)
+            delta: new THREE.Vector2(- 28, - 20)
         })
     }
 
@@ -125,7 +125,7 @@ export default class BeachSection
             },
             {
                 name: 'Data Science',
-                position: new THREE.Vector2(this.x + 20, this.y - 20),
+                position: new THREE.Vector2(this.x + 28, this.y - 20),
                 halfExtents: new THREE.Vector2(3, 3),
                 careerId: 'data-science'
             },
@@ -161,7 +161,7 @@ export default class BeachSection
             },
             {
                 name: 'Engineering',
-                position: new THREE.Vector2(this.x - 20, this.y - 20),
+                position: new THREE.Vector2(this.x - 28, this.y - 20),
                 halfExtents: new THREE.Vector2(3, 3),
                 careerId: 'engineering'
             }
@@ -263,7 +263,7 @@ export default class BeachSection
             },
             {
                 name: 'Data Science',
-                position: new THREE.Vector2(this.x + 20, this.y - 20),
+                position: new THREE.Vector2(this.x + 28, this.y - 20),
                 halfExtents: new THREE.Vector2(3, 3),
                 careerId: 'data-science',
                 color: 'emeraldGreen' // Tropical emerald - vibrant data
@@ -305,7 +305,7 @@ export default class BeachSection
             },
             {
                 name: 'Engineering',
-                position: new THREE.Vector2(this.x - 20, this.y - 20),
+                position: new THREE.Vector2(this.x - 28, this.y - 20),
                 halfExtents: new THREE.Vector2(3, 3),
                 careerId: 'engineering',
                 color: 'metal' // Metal - technical precision
