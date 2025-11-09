@@ -1,4 +1,4 @@
-import { initializeChat, sendMessageToAI, getDegreeCost } from '../services/gemini.js'
+import { initializeChat, sendMessageToAI, getDegreeCost, searchCollegeArticulationDocs } from '../services/gemini.js'
 import elevenLabsService from '../services/eleven.js'
 
 export default class Chat
@@ -435,6 +435,9 @@ export default class Chat
                     case 'calculate_degree_cost':
                         toolResponse = await this.handleCalculateDegreeCost(functionCall)
                         break
+                    case 'search_college_articulation_docs':
+                        toolResponse = await this.handleSearchArticulationDocs(functionCall)
+                        break
                     default:
                         toolResponse = {
                             id: functionCall.id,
@@ -804,6 +807,36 @@ export default class Chat
                 response: {
                     success: false,
                     error: error.message || 'Failed to calculate degree cost'
+                }
+            }
+        }
+    }
+
+    async handleSearchArticulationDocs(functionCall)
+    {
+        const args = functionCall.args
+        
+        try
+        {
+            const searchResults = await searchCollegeArticulationDocs(args)
+
+            return {
+                id: functionCall.id,
+                name: 'search_college_articulation_docs',
+                response: {
+                    success: true,
+                    results: searchResults
+                }
+            }
+        }
+        catch(error)
+        {
+            return {
+                id: functionCall.id,
+                name: 'search_college_articulation_docs',
+                response: {
+                    success: false,
+                    error: error.message || 'Failed to search articulation documents'
                 }
             }
         }

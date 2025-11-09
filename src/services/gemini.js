@@ -136,6 +136,18 @@ const tools = [
             },
             required: [],
         },
+    },
+    {
+        name: 'search_college_articulation_docs',
+        description: 'Search the college articulation PDF vector database for information about articulation agreements, transfer credits, and college policies. Returns relevant document chunks with source citations.',
+        parameters: {
+            type: Type.OBJECT,
+            properties: {
+                query: { type: Type.STRING, description: 'The search query or question about college articulation agreements, transfer credits, or related policies.' },
+                topK: { type: Type.INTEGER, description: 'Number of relevant chunks to retrieve (default: 5, max recommended: 10).' },
+            },
+            required: ['query'],
+        },
     }
 ];
 
@@ -597,5 +609,72 @@ export const getDegreeCost = async (params) => {
     } catch (error) {
         console.error('Error fetching degree cost:', error);
         throw new Error(`Failed to calculate degree cost: ${error.message}`);
+    }
+};
+
+/**
+ * Search the college articulation PDF vector database
+ * @param {Object} params - Parameters for the API call
+ * @param {string} params.query - The search query or question
+ * @param {number} params.topK - Number of relevant chunks to retrieve (default: 5)
+ * @returns {Promise<string>} Formatted search results with source citations
+ */
+export const searchCollegeArticulationDocs = async (params) => {
+    const baseUrl = 'https://articulation-vector-db-api.onrender.com';
+    const url = `${baseUrl}/search`;
+    
+    const requestBody = {
+        query: params.query,
+        top_k: params.topK || 5
+    };
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Format the response for display
+        let formattedResponse = '';
+
+        if (data.chunks && data.chunks.length > 0) {
+            formattedResponse = `**Search Results**\n\n`;
+            formattedResponse += `Found ${data.total_results || data.chunks.length} relevant document chunk(s) for: "${data.query}"\n\n`;
+            
+            // Use the pre-formatted context if available, otherwise format manually
+            if (data.context) {
+                formattedResponse += `**Relevant Information:**\n\n${data.context}\n\n`;
+            } else {
+                // Format chunks manually if context is not provided
+                data.chunks.forEach((chunk, index) => {
+                    formattedResponse += `**Result ${index + 1}** (Score: ${chunk.score?.toFixed(3) || 'N/A'})\n`;
+                    formattedResponse += `Source: ${chunk.source || 'Unknown'}\n`;
+                    formattedResponse += `${chunk.text}\n\n`;
+                });
+            }
+            
+            // Add source citations
+            const sources = [...new Set(data.chunks.map(chunk => chunk.source).filter(Boolean))];
+            if (sources.length > 0) {
+                formattedResponse += `**Sources:** ${sources.join(', ')}\n`;
+            }
+        } else {
+            formattedResponse = `No relevant information found for: "${data.query}"\n`;
+            formattedResponse += `Please try rephrasing your question or using different keywords.`;
+        }
+
+        return formattedResponse;
+    } catch (error) {
+        console.error('Error searching articulation docs:', error);
+        throw new Error(`Failed to search articulation documents: ${error.message}`);
     }
 };
