@@ -264,79 +264,149 @@ export default class Resources extends EventEmitter
 
     convertTreesToPalmTrees()
     {
-        // List of static base models that might contain trees
+        // List of static base models that might contain unwanted objects
         const staticModels = [
-            'introStaticBase'
+            'introStaticBase',
+            'introStaticCollision',
+            'playgroundStaticBase',
+            'playgroundStaticCollision',
+            'crossroadsStaticBase',
+            'crossroadsStaticCollision',
+            'distinctionAStaticBase',
+            'distinctionAStaticCollision',
+            'distinctionBStaticBase',
+            'distinctionBStaticCollision',
+            'distinctionCStaticBase',
+            'distinctionCStaticCollision',
+            'informationStaticBase',
+            'informationStaticCollision'
         ]
 
         staticModels.forEach(modelName => {
             if (this.items[modelName] && this.items[modelName].scene) {
-                this.processTreeConversion(this.items[modelName].scene)
+                console.log(`Processing model: ${modelName}`)
+                this.removeUnwantedObjects(this.items[modelName].scene)
             }
         })
     }
 
-    processTreeConversion(_object)
+    removeUnwantedObjects(_object)
     {
-        // Traverse the object and its children recursively
+        const objectsToRemove = []
+        
+        // First pass: identify objects to remove
         _object.traverse((child) => {
             if (child instanceof THREE.Mesh) {
                 const name = child.name.toLowerCase()
                 
-                // Get bounding box to understand the mesh's dimensions
+                // List of unwanted object keywords
+                const unwantedKeywords = [
+                    'rock', 'stone', 'pebble', 'boulder', 'debris', 'rubble',
+                    'tree', 'trunk', 'leaf', 'foliage', 'branch', 'bush', 'plant',
+                    'shrub', 'vegetation', 'grass', 'weed', 'vine',
+                    'cube', 'box', 'placeholder', 'prop', 'decoration', 'scenery'
+                ]
+                
+                const isUnwantedByName = unwantedKeywords.some(keyword => name.includes(keyword))
+                
+                // Check for yellow/bright colored materials (placeholder objects)
+                let hasYellowMaterial = false
+                let hasDefaultMaterial = false
+                if (child.material) {
+                    const materials = Array.isArray(child.material) ? child.material : [child.material]
+                    hasYellowMaterial = materials.some(mat => {
+                        // Check multiple yellow/placeholder color patterns
+                        if (mat.color) {
+                            const r = mat.color.r
+                            const g = mat.color.g
+                            const b = mat.color.b
+                            
+                            // Bright yellow
+                            const isBrightYellow = r > 0.8 && g > 0.8 && b < 0.5
+                            // Any yellow tint
+                            const isYellowish = r > 0.7 && g > 0.7 && b < 0.6
+                            // Placeholder orange/yellow
+                            const isPlaceholderOrange = r > 0.9 && g > 0.7 && b < 0.4
+                            
+                            return isBrightYellow || isYellowish || isPlaceholderOrange
+                        }
+                        return false
+                    })
+                    
+                    // Check for default/unnamed materials
+                    hasDefaultMaterial = materials.some(mat => 
+                        !mat.name || mat.name === '' || mat.name.toLowerCase().includes('default')
+                    )
+                }
+                
+                // Check geometry characteristics
                 const box = new THREE.Box3().setFromObject(child)
                 const size = box.getSize(new THREE.Vector3())
-                const height = Math.max(size.x, size.y, size.z)
-                const width = Math.min(size.x, size.y, size.z)
-                const heightToWidthRatio = height > 0 ? height / Math.max(width, 0.1) : 0
+                const width = size.x
+                const height = size.y
+                const depth = size.z
                 
-                // Check if this mesh is a tree (by name or geometry characteristics)
-                const isTreeByName = name.includes('tree') || 
-                                    name.includes('trunk') || 
-                                    name.includes('leaf') ||
-                                    name.includes('foliage') ||
-                                    name.includes('branch') ||
-                                    name.includes('bush') ||
-                                    name.includes('plant')
+                // Check if it's a cube (all sides roughly equal)
+                const avgSize = (width + height + depth) / 3
+                const isCubeLike = Math.abs(width - avgSize) < avgSize * 0.3 && 
+                                   Math.abs(height - avgSize) < avgSize * 0.3 && 
+                                   Math.abs(depth - avgSize) < avgSize * 0.3 &&
+                                   avgSize > 0.3 && avgSize < 5 // Reasonable cube size
                 
-                // Check geometry characteristics: tall vertical objects are likely trees
-                const isTreeByGeometry = heightToWidthRatio > 1.5 && height > 0.5 && 
-                                        !name.includes('wall') && 
-                                        !name.includes('floor') && 
-                                        !name.includes('ground') &&
-                                        !name.includes('building') &&
-                                        !name.includes('house') &&
-                                        !name.includes('car') &&
-                                        !name.includes('road') &&
-                                        !name.includes('boat')
+                // Check if it's tree-like (tall and thin)
+                const maxDim = Math.max(width, height, depth)
+                const minDim = Math.min(width, height, depth)
+                const heightToWidthRatio = maxDim > 0 ? maxDim / Math.max(minDim, 0.1) : 0
                 
-                const isTree = isTreeByName || isTreeByGeometry
+                const isTreeLikeByGeometry = heightToWidthRatio > 2.0 && maxDim > 0.5 && 
+                                            !name.includes('wall') && 
+                                            !name.includes('floor') && 
+                                            !name.includes('ground') &&
+                                            !name.includes('building') &&
+                                            !name.includes('house') &&
+                                            !name.includes('car') &&
+                                            !name.includes('road') &&
+                                            !name.includes('boat') &&
+                                            !name.includes('letter')
                 
-                if (isTree) {
-                    // Transform to palm tree characteristics
-                    if (name.includes('trunk') || name.includes('stem') || 
-                        (isTreeByGeometry && !name.includes('leaf') && !name.includes('foliage'))) {
-                        // Make trunk taller and thinner (palm tree style)
-                        child.scale.y *= 1.5 // Make taller
-                        child.scale.x *= 0.7  // Make thinner
-                        child.scale.z *= 0.7  // Make thinner
-                    } else if (name.includes('leaf') || name.includes('foliage') || name.includes('branch')) {
-                        // Transform leaves into palm fronds
-                        // Make them more horizontal and spread out
-                        child.scale.y *= 0.8
-                        child.scale.x *= 1.3
-                        child.scale.z *= 1.3
-                        // Rotate to be more horizontal (palm fronds)
-                        child.rotation.x += Math.PI * 0.1
+                // Check if it's a rock-like object (irregular but compact)
+                const isRockLike = avgSize < 2 && avgSize > 0.2 && 
+                                   !name.includes('letter') && 
+                                   !name.includes('text') &&
+                                   (hasDefaultMaterial || hasYellowMaterial)
+                
+                const shouldRemove = isUnwantedByName || hasYellowMaterial || isTreeLikeByGeometry || 
+                                    (isCubeLike && hasYellowMaterial) || 
+                                    (isCubeLike && hasDefaultMaterial && avgSize < 2) ||
+                                    isRockLike
+                
+                if (shouldRemove) {
+                    objectsToRemove.push(child)
+                    console.log(`Marking for removal: ${child.name || 'unnamed'} (yellow: ${hasYellowMaterial}, cube: ${isCubeLike}, tree: ${isTreeLikeByGeometry}, rock: ${isRockLike}, default mat: ${hasDefaultMaterial})`)
+                }
+            }
+        })
+        
+        // Second pass: remove identified objects
+        objectsToRemove.forEach(child => {
+            if (child.parent) {
+                console.log(`Removing object: ${child.name}`)
+                child.parent.remove(child)
+                
+                // Dispose of geometry and material to free memory
+                if (child.geometry) {
+                    child.geometry.dispose()
+                }
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => mat.dispose())
                     } else {
-                        // Generic tree - transform to palm tree
-                        // Make taller and thinner
-                        child.scale.y *= 1.4
-                        child.scale.x *= 0.75
-                        child.scale.z *= 0.75
+                        child.material.dispose()
                     }
                 }
             }
         })
+        
+        console.log(`Removed ${objectsToRemove.length} unwanted objects from scene`)
     }
 }

@@ -11,9 +11,9 @@ export default class Tiles
 
         // Set up
         this.items = []
-        this.interDistance = 0.5 // Very close spacing for concentrated shells
-        this.tangentDistance = 0.25 // Tighter spread
-        this.positionRandomess = 0.4 // Random but not too spread out
+        this.interDistance = 0.25 // Ultra close spacing for extreme concentration
+        this.tangentDistance = 0.15 // Extremely tight spread
+        this.positionRandomess = 0.25 // Minimal randomness for maximum density
         this.rotationRandomess = 0.5 // More rotation variety
 
         this.setModels()
@@ -223,7 +223,7 @@ export default class Tiles
         tilePath.angle = tilePath.directionVector.angle()
 
         // Create shells - add multiple rows for more concentrated pathways
-        const shellsPerPosition = 2 // Add 2 shells per position for density
+        const shellsPerPosition = 4 // Add 4 shells per position for ultra-dense paths
         
         for(let i = 0; i < tilePath.count; i++)
         {

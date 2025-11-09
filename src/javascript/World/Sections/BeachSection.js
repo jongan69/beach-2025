@@ -568,16 +568,27 @@ export default class BeachSection
                             // Convert MeshBasicMaterial to MeshStandardMaterial for proper lighting
                             if (material.type === 'MeshBasicMaterial') {
                                 const newMaterial = new THREE.MeshStandardMaterial({
-                                    color: material.color || 0x4a90e2,
+                                    color: material.color || 0x6ab8ff, // Brighter blue
                                     map: material.map || null,
-                                    metalness: 0.3,
-                                    roughness: 0.6
+                                    metalness: 0.5, // More metallic for brightness
+                                    roughness: 0.3, // Less rough = more reflective/brighter
+                                    emissive: material.color || 0x2a5580, // Subtle glow
+                                    emissiveIntensity: 0.2 // Gentle emission for brightness
                                 })
                                 if (Array.isArray(child.material)) {
                                     const matIndex = child.material.indexOf(material)
                                     child.material[matIndex] = newMaterial
                                 } else {
                                     child.material = newMaterial
+                                }
+                            } else {
+                                // Enhance existing materials to be brighter
+                                material.metalness = Math.max(material.metalness || 0, 0.5)
+                                material.roughness = Math.min(material.roughness !== undefined ? material.roughness : 1, 0.3)
+                                if (material.color) {
+                                    // Add emissive glow for brightness
+                                    material.emissive = material.color.clone().multiplyScalar(0.3)
+                                    material.emissiveIntensity = 0.2
                                 }
                             }
                             
@@ -586,11 +597,13 @@ export default class BeachSection
                         }
                     })
                 } else {
-                    // No material - add a default visible material
+                    // No material - add a default bright visible material
                     child.material = new THREE.MeshStandardMaterial({
-                        color: 0x4a90e2,
-                        metalness: 0.3,
-                        roughness: 0.6
+                        color: 0x6ab8ff, // Brighter blue
+                        metalness: 0.5, // More reflective
+                        roughness: 0.3, // Less rough = brighter
+                        emissive: 0x2a5580, // Subtle glow
+                        emissiveIntensity: 0.2
                     })
                 }
             }
@@ -621,6 +634,22 @@ export default class BeachSection
         shark.updateMatrix()
         shark.updateMatrixWorld(true)
         
+        // Add dedicated lighting for the shark
+        const sharkLight1 = new THREE.PointLight(0xffffff, 2, 10) // Bright white light
+        sharkLight1.position.set(sharkX, sharkY, sharkZ + 3) // Above shark
+        this.container.add(sharkLight1)
+        
+        const sharkLight2 = new THREE.PointLight(0x6ab8ff, 1.5, 8) // Blue accent light
+        sharkLight2.position.set(sharkX + 2, sharkY, sharkZ + 2) // Side light
+        this.container.add(sharkLight2)
+        
+        // Add directional light for overall illumination
+        const sharkDirLight = new THREE.DirectionalLight(0xffffff, 1.5)
+        sharkDirLight.position.set(sharkX + 5, sharkY + 5, 5)
+        sharkDirLight.target.position.set(sharkX, sharkY, sharkZ)
+        this.container.add(sharkDirLight)
+        this.container.add(sharkDirLight.target)
+        
         this.container.add(shark)
         
         console.log('Shark positioned:', { x: sharkX, y: sharkY, z: sharkZ })
@@ -631,7 +660,7 @@ export default class BeachSection
             xDegrees: (shark.rotation.x * 180 / Math.PI).toFixed(2),
             zDegrees: (shark.rotation.z * 180 / Math.PI).toFixed(2)
         })
-        console.log('🦈 Original Shark added to the left of the n in Hackathon')
+        console.log('🦈 Original Shark added with dedicated lighting')
     }
     
     addSharkyModel()
@@ -666,16 +695,27 @@ export default class BeachSection
                             // Convert MeshBasicMaterial to MeshStandardMaterial for proper lighting
                             if (material.type === 'MeshBasicMaterial') {
                                 const newMaterial = new THREE.MeshStandardMaterial({
-                                    color: material.color || 0x4a90e2,
+                                    color: material.color || 0x6ab8ff, // Brighter blue
                                     map: material.map || null,
-                                    metalness: 0.3,
-                                    roughness: 0.6
+                                    metalness: 0.5, // More metallic for brightness
+                                    roughness: 0.3, // Less rough = more reflective/brighter
+                                    emissive: material.color || 0x2a5580, // Subtle glow
+                                    emissiveIntensity: 0.2 // Gentle emission for brightness
                                 })
                                 if (Array.isArray(child.material)) {
                                     const matIndex = child.material.indexOf(material)
                                     child.material[matIndex] = newMaterial
                                 } else {
                                     child.material = newMaterial
+                                }
+                            } else {
+                                // Enhance existing materials to be brighter
+                                material.metalness = Math.max(material.metalness || 0, 0.5)
+                                material.roughness = Math.min(material.roughness !== undefined ? material.roughness : 1, 0.3)
+                                if (material.color) {
+                                    // Add emissive glow for brightness
+                                    material.emissive = material.color.clone().multiplyScalar(0.3)
+                                    material.emissiveIntensity = 0.2
                                 }
                             }
                             
@@ -684,11 +724,13 @@ export default class BeachSection
                         }
                     })
                 } else {
-                    // No material - add a default visible material
+                    // No material - add a default bright visible material
                     child.material = new THREE.MeshStandardMaterial({
-                        color: 0x4a90e2,
-                        metalness: 0.3,
-                        roughness: 0.6
+                        color: 0x6ab8ff, // Brighter blue
+                        metalness: 0.5, // More reflective
+                        roughness: 0.3, // Less rough = brighter
+                        emissive: 0x2a5580, // Subtle glow
+                        emissiveIntensity: 0.2
                     })
                 }
             }
@@ -719,6 +761,22 @@ export default class BeachSection
         sharky.updateMatrix()
         sharky.updateMatrixWorld(true)
         
+        // Add dedicated lighting for sharky
+        const sharkyLight1 = new THREE.PointLight(0xffffff, 2, 10) // Bright white light
+        sharkyLight1.position.set(sharkyX, sharkyY, sharkyZ + 3) // Above sharky
+        this.container.add(sharkyLight1)
+        
+        const sharkyLight2 = new THREE.PointLight(0x6ab8ff, 1.5, 8) // Blue accent light
+        sharkyLight2.position.set(sharkyX - 2, sharkyY, sharkyZ + 2) // Side light
+        this.container.add(sharkyLight2)
+        
+        // Add directional light for overall illumination
+        const sharkyDirLight = new THREE.DirectionalLight(0xffffff, 1.5)
+        sharkyDirLight.position.set(sharkyX - 5, sharkyY - 5, 5)
+        sharkyDirLight.target.position.set(sharkyX, sharkyY, sharkyZ)
+        this.container.add(sharkyDirLight)
+        this.container.add(sharkyDirLight.target)
+        
         this.container.add(sharky)
         
         console.log('Sharky positioned:', { x: sharkyX, y: sharkyY, z: sharkyZ })
@@ -729,7 +787,7 @@ export default class BeachSection
             xDegrees: (sharky.rotation.x * 180 / Math.PI).toFixed(2),
             zDegrees: (sharky.rotation.z * 180 / Math.PI).toFixed(2)
         })
-        console.log('🦈 Sharky added to the left of the S in SharkByte')
+        console.log('🦈 Sharky added with dedicated lighting')
     }
 
     /**

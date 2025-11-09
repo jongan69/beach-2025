@@ -140,10 +140,11 @@ export default class World
             // Matcap progress changed
             if(this.reveal.floorShadowsProgress !== this.reveal.previousFloorShadowsProgress)
             {
-                // Update each floor shadow
+                // Floor shadows permanently disabled - keep alpha at 0
                 for(const _mesh of this.objects.floorShadows)
                 {
-                    _mesh.material.uniforms.uAlpha.value = this.reveal.floorShadowsProgress
+                    _mesh.material.uniforms.uAlpha.value = 0 // Force invisible
+                    _mesh.visible = false // Double ensure invisibility
                 }
 
                 // Save

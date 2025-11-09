@@ -101,11 +101,14 @@ export default class Objects
 
                     material.uniforms.tShadow.value = _options.floorShadowTexture
                     material.uniforms.uShadowColor.value = new THREE.Color(this.materials.items.floorShadow.shadowColor)
-                    material.uniforms.uAlpha.value = 0
+                    material.uniforms.uAlpha.value = 0 // Floor shadows permanently disabled
 
                     const mesh = new THREE.Mesh(geometry, material)
                     mesh.matrixAutoUpdate = false
                     mesh.updateMatrix()
+                    
+                    // Mark as invisible floor shadow
+                    mesh.visible = false
 
                     this.floorShadows.push(mesh)
 
@@ -227,6 +230,68 @@ export default class Objects
 
             if(_child instanceof THREE.Mesh)
             {
+                const name = _child.name.toLowerCase()
+                
+                // Filter out unwanted objects (rocks, trees, yellow cubes, etc.)
+                const unwantedObjects = [
+                    'rock', 'stone', 'pebble', 'boulder', 'debris', 'rubble',
+                    'tree', 'trunk', 'leaf', 'foliage', 'branch', 'bush', 'plant',
+                    'shrub', 'vegetation', 'grass', 'weed', 'vine',
+                    'cube', 'box', 'placeholder', 'prop', 'decoration', 'scenery'
+                ]
+                
+                const isUnwanted = unwantedObjects.some(keyword => name.includes(keyword))
+                
+                // Check for yellow/bright colored materials (placeholder objects)
+                let hasYellowMaterial = false
+                let hasDefaultMaterial = false
+                if (_child.material) {
+                    const materials = Array.isArray(_child.material) ? _child.material : [_child.material]
+                    hasYellowMaterial = materials.some(mat => {
+                        if (mat.color) {
+                            const r = mat.color.r
+                            const g = mat.color.g
+                            const b = mat.color.b
+                            
+                            // Multiple yellow detection patterns
+                            const isBrightYellow = r > 0.8 && g > 0.8 && b < 0.5
+                            const isYellowish = r > 0.7 && g > 0.7 && b < 0.6
+                            const isPlaceholderOrange = r > 0.9 && g > 0.7 && b < 0.4
+                            
+                            return isBrightYellow || isYellowish || isPlaceholderOrange
+                        }
+                        return false
+                    })
+                    
+                    hasDefaultMaterial = materials.some(mat => 
+                        !mat.name || mat.name === '' || mat.name.toLowerCase().includes('default')
+                    )
+                }
+                
+                // Geometry-based detection for cubes and rocks
+                const box = new THREE.Box3().setFromObject(_child)
+                const size = box.getSize(new THREE.Vector3())
+                const avgSize = (size.x + size.y + size.z) / 3
+                const isCubeLike = Math.abs(size.x - avgSize) < avgSize * 0.3 && 
+                                   Math.abs(size.y - avgSize) < avgSize * 0.3 && 
+                                   Math.abs(size.z - avgSize) < avgSize * 0.3 &&
+                                   avgSize > 0.3 && avgSize < 5
+                
+                const isRockLike = avgSize < 2 && avgSize > 0.2 && 
+                                   !name.includes('letter') && 
+                                   (hasDefaultMaterial || hasYellowMaterial)
+                
+                // Skip unwanted objects
+                const shouldSkip = isUnwanted || hasYellowMaterial || 
+                                  (isCubeLike && hasYellowMaterial) || 
+                                  (isCubeLike && hasDefaultMaterial && avgSize < 2) ||
+                                  isRockLike
+                
+                if (shouldSkip) {
+                    console.log(`Filtering out object: ${_child.name || 'unnamed'} (yellow: ${hasYellowMaterial}, cube: ${isCubeLike}, rock: ${isRockLike})`)
+                    continue
+                }
+                
                 // Find parser and use default if not found
                 let parser = this.parsers.items.find((_item) => _child.name.match(_item.regex))
                 if(typeof parser === 'undefined')
