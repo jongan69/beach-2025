@@ -34,12 +34,8 @@ export default class BeachSection
         this.setStatic()
         this.setTiles()
         this.setCareerAreas()
-        // Create labels asynchronously (will wait for materials to be ready)
-        this.setCareerAreaLabels().catch(err => {
-            console.error('Error creating career area labels:', err)
-        })
-        this.setPalmTrees()
-        this.setGradTrackText() // Text first, then shark and sharky
+        this.setBeachDecorations()
+        this.setGradTrackText()
     }
 
     setStatic()
@@ -51,6 +47,17 @@ export default class BeachSection
             offset: new THREE.Vector3(this.x, this.y, 0),
             mass: 0
         })
+    }
+
+    setBeachDecorations()
+    {
+        // Initialize all beach decorations
+        // Create labels asynchronously (will wait for materials to be ready)
+        this.setCareerAreaLabels().catch(err => {
+            console.error('Error creating career area labels:', err)
+        })
+        this.setPalmTrees()
+        this.setEasterEggCredits() // Easter egg credits
     }
 
     setTiles()
@@ -966,6 +973,36 @@ export default class BeachSection
         }
     }
 
+    /**
+     * Add clickable area that links to GradTrack website
+     */
+    setGradTrackLinkArea()
+    {
+        console.log('🔗 Adding GradTrack website link area')
+        
+        // Position the clickable area above/near the "Grad Track" text
+        const linkArea = this.areas.add({
+            position: new THREE.Vector2(this.x, this.y - 14), // Same Y as Grad Track text
+            halfExtents: new THREE.Vector2(8, 2), // Wide enough to cover the text
+            hasKey: true, // Shows "Press Enter" prompt
+            testCar: true,
+            active: true
+        })
+
+        // Add interact handler to open the website
+        linkArea.on('interact', () => {
+            console.log('🔗 Opening GradTrack team website')
+            
+            // Open the website in a new tab
+            window.open('https://next-linktree-omega.vercel.app/', '_blank')
+        })
+
+        // Store reference for debugging
+        this.gradTrackLinkArea = linkArea
+        
+        console.log('🔗 GradTrack link area created successfully')
+    }
+
     async setGradTrackText()
     {
         // Wait for materials to be available
@@ -1002,5 +1039,77 @@ export default class BeachSection
         
         // After text is created, add the shark
         this.setShark()
+    }
+    
+    /**
+     * Easter egg - Credits for the team in small 3D text
+     */
+    async setEasterEggCredits()
+    {
+        console.log('🥚 Adding Easter Egg Credits')
+        
+        // Position much farther in front (positive Y = forward)
+        const creditsX = this.x
+        const creditsY = this.y + 60 // Much farther forward - requires exploration!
+        const creditsZ = 0.3 // Slightly above ground
+        
+        // Team names
+        const names = [
+            'Yusuf Dirdis',
+            'Jon Gan',
+            'Paul Piotrowski',
+            'Raphael Talon'
+        ]
+        
+        // Readable text settings - larger and more defined
+        const textSize = 0.6 // Larger for readability
+        const textHeight = 0.3 // More depth for better definition
+        const spacing = 1.8 // More space between names
+        
+        // Use a contrasting material for better visibility
+        const material = this.objects.materials.shades.items.yellow || 
+                        this.objects.materials.shades.items.orange ||
+                        this.objects.materials.shades.items.white
+        
+        // Create each name with enhanced definition
+        for (let i = 0; i < names.length; i++) {
+            const name = names[i]
+            const yOffset = i * spacing
+            
+            await this.addText3D(name, creditsX, creditsY + yOffset, creditsZ, {
+                material: material,
+                size: textSize,
+                height: textHeight,
+                letterSpacing: 0.2,
+                mass: 1, // Movable - easter egg can be pushed around!
+                soundName: 'ui',
+                // Enhanced definition parameters
+                curveSegments: 20, // More curve detail
+                bevelThickness: 0.18,
+                bevelSize: 0.15,
+                bevelSegments: 10 // More bevel detail for crisp edges
+            })
+        }
+        
+        console.log('🥚 Easter Egg Credits added successfully at Y=' + creditsY)
+        
+        // Add clickable box around the names to open team linktree
+        const creditsLinkArea = this.areas.add({
+            position: new THREE.Vector2(creditsX, creditsY + 2), // Centered on the names
+            halfExtents: new THREE.Vector2(6, 5), // Large enough to cover all 4 names
+            hasKey: true, // Shows "Press Enter" prompt
+            testCar: true,
+            active: true
+        })
+
+        // Add interact handler to open the linktree
+        creditsLinkArea.on('interact', () => {
+            console.log('🔗 Opening GradTrack Team Linktree')
+            
+            // Open the linktree in a new tab
+            window.open('https://next-linktree-omega.vercel.app/', '_blank')
+        })
+
+        console.log('🔗 Team names link area created successfully')
     }
 }
