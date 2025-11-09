@@ -791,11 +791,11 @@ export default class Chat
             // Generate PDF
             await this.generatePDF(this.currentFlowchartData)
             
-            return {
-                id: functionCall.id,
-                name: 'offer_pdf_export',
-                response: {
-                    success: true,
+        return {
+            id: functionCall.id,
+            name: 'offer_pdf_export',
+            response: {
+                success: true,
                     message: 'PDF has been generated and downloaded successfully!'
                 }
             }
@@ -925,7 +925,7 @@ export default class Chat
      */
     createFlowchartHTML(flowchartData)
     {
-        const { career, plans } = flowchartData
+        const { career, plans, extracurriculars } = flowchartData
         
         let html = `
             <div class="flowchart-wrapper" data-flowchart-id="${Date.now()}">
@@ -981,6 +981,53 @@ export default class Chat
             
             html += `</div>`
         })
+        
+        // Add extracurriculars section if available
+        if (extracurriculars && (extracurriculars.clubs?.length > 0 || extracurriculars.activities?.length > 0)) {
+            html += `
+                <div class="flowchart-extracurriculars">
+                    <div class="flowchart-extras-header">
+                        <div class="flowchart-dot flowchart-dot--extras"></div>
+                        <h4 class="flowchart-extras-title">🎯 Recommended Extracurriculars</h4>
+                    </div>
+                    <div class="flowchart-extras-content">
+            `
+            
+            if (extracurriculars.clubs && extracurriculars.clubs.length > 0) {
+                html += `
+                    <div class="flowchart-extras-section">
+                        <h5 class="flowchart-extras-subtitle">🏆 Clubs & Organizations</h5>
+                        <ul class="flowchart-extras-list">
+                `
+                extracurriculars.clubs.forEach(club => {
+                    html += `<li class="flowchart-extras-item">${this.escapeHTML(club)}</li>`
+                })
+                html += `
+                        </ul>
+                    </div>
+                `
+            }
+            
+            if (extracurriculars.activities && extracurriculars.activities.length > 0) {
+                html += `
+                    <div class="flowchart-extras-section">
+                        <h5 class="flowchart-extras-subtitle">✨ Activities & Opportunities</h5>
+                        <ul class="flowchart-extras-list">
+                `
+                extracurriculars.activities.forEach(activity => {
+                    html += `<li class="flowchart-extras-item">${this.escapeHTML(activity)}</li>`
+                })
+                html += `
+                        </ul>
+                    </div>
+                `
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `
+        }
         
         html += `
                 </div>

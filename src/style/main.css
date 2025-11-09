@@ -755,3 +755,85 @@ html
     font-size: 16px;
     font-weight: 700;
 }
+
+/* Extracurriculars Section */
+.flowchart-extracurriculars
+{
+    position: relative;
+    margin-top: 32px;
+    padding-left: 8px;
+}
+
+.flowchart-extras-header
+{
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.flowchart-dot--extras
+{
+    background: #9C27B0;
+}
+
+.flowchart-extras-title
+{
+    font-size: 16px;
+    font-weight: 700;
+    color: #9C27B0;
+    margin: 0;
+}
+
+.flowchart-extras-content
+{
+    background: rgba(156, 39, 176, 0.05);
+    padding: 16px;
+    border-radius: 8px;
+    border: 2px solid rgba(156, 39, 176, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.flowchart-extras-section
+{
+    margin-bottom: 16px;
+}
+
+.flowchart-extras-section:last-child
+{
+    margin-bottom: 0;
+}
+
+.flowchart-extras-subtitle
+{
+    font-size: 14px;
+    font-weight: 700;
+    color: #555;
+    margin: 0 0 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.flowchart-extras-list
+{
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.flowchart-extras-item
+{
+    font-size: 13px;
+    color: #333;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 6px;
+    border-left: 3px solid #9C27B0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.flowchart-extras-item:hover
+{
+    transform: translateX(4px);
+    box-shadow: 0 2px 6px rgba(156, 39, 176, 0.2);
+}

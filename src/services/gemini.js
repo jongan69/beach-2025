@@ -241,7 +241,10 @@ export const getFlowchartData = async (career, startDate, coursesPerTerm, target
     if (targetUniversity && bachelorsDegree) {
         prompt = `Generate a comprehensive 4-year study plan for a student pursuing a career in ${career}. The plan should start with a 2-year Associate degree at Miami Dade College (MDC), beginning in ${startDate}, and then transfer to ${targetUniversity} to complete a ${bachelorsDegree}. Use Google Search to find the official MDC curriculum and the curriculum for the Bachelor's degree at ${targetUniversity}, including transfer requirements and articulation agreements like the 2+2 pathway. The student wants to take courses based on this schedule: "${coursesPerTerm}". Structure the plan to match this course load for all 4 years.
 
-The output must be a single JSON object. The root object should have two keys: "career" (string, value: "${career}") and "plans" (an array of two degree plan objects).
+The output must be a single JSON object. The root object should have three keys:
+1. "career" (string, value: "${career}")
+2. "plans" (an array of two degree plan objects)
+3. "extracurriculars" (an object with recommendations)
 
 The first degree plan object (for MDC) must have three keys:
 1. "institution" (string, value: "Miami Dade College")
@@ -255,11 +258,20 @@ The second degree plan object (for ${targetUniversity}) must have three keys:
 
 Each term object in both timelines must have two keys: "term" (string, e.g., "Fall 2024") and "courses" (an array of strings, where each string includes both the course code and name, e.g., ["COP 1000 - Introduction to Programming"]).
 
+The "extracurriculars" object should have two keys:
+1. "clubs" (an array of 3-5 relevant clubs/organizations at MDC or ${targetUniversity}, e.g., ["Computer Science Club", "Robotics Team", "Women in Tech"])
+2. "activities" (an array of 3-5 recommended extracurricular activities or opportunities, e.g., ["Participate in hackathons", "Join student government", "Volunteer at local tech companies"])
+
+Use Google Search to find actual clubs and organizations available at MDC and ${targetUniversity} that are relevant to ${career}.
+
 Do not include any explanatory text, just the raw JSON.`;
     } else {
         prompt = `Generate a detailed 2-year Associate degree study plan for a student at Miami Dade College (MDC) pursuing a career in ${career}, starting in ${startDate}. Use Google Search to find the official MDC curriculum for this pathway. The student wants to take courses based on this schedule: "${coursesPerTerm}". Structure the plan to match this course load.
 
-The output must be a single JSON object. The root object should have two keys: "career" (string, e.g., "${career}") and "plans" (an array containing one degree plan object).
+The output must be a single JSON object. The root object should have three keys:
+1. "career" (string, e.g., "${career}")
+2. "plans" (an array containing one degree plan object)
+3. "extracurriculars" (an object with recommendations)
 
 The degree plan object must have three keys:
 1. "institution" (string, value: "Miami Dade College")
@@ -267,6 +279,12 @@ The degree plan object must have three keys:
 3. "timeline" (an array of term objects).
 
 Each term object in the timeline must have two keys: "term" (string, e.g., "Fall 2024") and "courses" (an array of strings, where each string includes both the course code and name, e.g., ["COP 1000 - Introduction to Programming"]).
+
+The "extracurriculars" object should have two keys:
+1. "clubs" (an array of 3-5 relevant clubs/organizations at MDC that are related to ${career}, e.g., ["Computer Science Club", "Engineering Society", "Student Government"])
+2. "activities" (an array of 3-5 recommended extracurricular activities or opportunities, e.g., ["Participate in hackathons", "Volunteer in related field", "Attend industry conferences", "Join professional organizations"])
+
+Use Google Search to find actual clubs and organizations available at Miami Dade College that are relevant to ${career}.
 
 Do not include any explanatory text, just the raw JSON.`;
     }
@@ -299,6 +317,13 @@ Do not include any explanatory text, just the raw JSON.`;
         const data = JSON.parse(jsonText);
         // Basic validation
         if (data.career && Array.isArray(data.plans)) {
+            // Ensure extracurriculars exists, add default if missing
+            if (!data.extracurriculars) {
+                data.extracurriculars = {
+                    clubs: [],
+                    activities: []
+                };
+            }
             return data;
         } else {
             throw new Error("Invalid JSON structure received from AI for flowchart.");
