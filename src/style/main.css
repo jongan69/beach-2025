@@ -345,6 +345,43 @@ html
     font-weight: 700;
 }
 
+.chat-widget__header-buttons
+{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chat-widget__shark-btn
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    backdrop-filter: blur(10px);
+}
+
+.chat-widget__shark-btn:hover
+{
+    background: rgba(255, 255, 255, 0.3);
+    border-color: #ffffff;
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.chat-widget__shark-btn:active
+{
+    transform: scale(0.95);
+}
+
 .chat-widget__close
 {
     background: none;
