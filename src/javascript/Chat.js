@@ -525,13 +525,32 @@ export default class Chat
                 args.bachelorsDegree
             )
 
+            // Format the course data into a readable text summary for the AI to present
+            let coursesSummary = `\n\nCOMPLETE COURSE BREAKDOWN:\n\n`
+            
+            flowchartData.plans.forEach(plan => {
+                coursesSummary += `${plan.institution} - ${plan.degree}\n`
+                coursesSummary += `${'='.repeat(60)}\n\n`
+                
+                plan.timeline.forEach(term => {
+                    coursesSummary += `${term.term}:\n`
+                    term.courses.forEach(course => {
+                        coursesSummary += `  • ${course}\n`
+                    })
+                    coursesSummary += `\n`
+                })
+                
+                coursesSummary += `\n`
+            })
+
             return {
                 id: functionCall.id,
                 name: 'generate_study_flowchart',
                 response: {
                     success: true,
                     data: flowchartData,
-                    message: `I've generated a ${args.targetUniversity ? '4-year' : '2-year'} study plan for ${args.career}. The plan includes ${flowchartData.plans.length} degree plan(s) with detailed course timelines.`
+                    coursesSummary: coursesSummary,
+                    message: `Successfully generated a ${args.targetUniversity ? '4-year' : '2-year'} study plan for ${args.career}. The data includes ${flowchartData.plans.length} degree plan(s) with complete course timelines. Present this full breakdown to the user now.`
                 }
             }
         }

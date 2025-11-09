@@ -117,6 +117,12 @@ export default class World
         // Time tick
         this.time.on('tick',() =>
         {
+            // Update palm tree screen positions for sand circles
+            if(this.floor && this.floor.updatePalmTreeScreenPositions && this.camera)
+            {
+                this.floor.updatePalmTreeScreenPositions(this.camera)
+            }
+            
             // Matcap progress changed
             if(this.reveal.matcapsProgress !== this.reveal.previousMatcapsProgress)
             {
@@ -400,6 +406,7 @@ export default class World
             zones: this.zones,
             walls: this.walls,
             tiles: this.tiles,
+            floor: this.floor, // Pass floor for sand circle updates
             debug: this.debugFolder,
             application: this.application // Pass application instance to sections
         }

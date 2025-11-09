@@ -14,6 +14,7 @@ export default class BeachSection
         this.areas = _options.areas
         this.walls = _options.walls
         this.tiles = _options.tiles
+        this.floor = _options.floor // Floor for sand circle updates
         this.debug = _options.debug
         this.x = _options.x
         this.y = _options.y
@@ -515,6 +516,15 @@ export default class BeachSection
             
             this.container.add(palmTree)
         })
+        
+        // Pass palm tree positions to floor for sand circles
+        if (this.floor && this.floor.setPalmTreePositions) {
+            const positions = palmTreePositions.map(pos => ({ x: pos.x, y: pos.y }))
+            this.floor.setPalmTreePositions(positions)
+            console.log('BeachSection: Sent palm tree positions to floor for sand circles')
+        } else {
+            console.warn('BeachSection: Floor not available for sand circles')
+        }
     }
 
     setShark()

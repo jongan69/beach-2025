@@ -305,35 +305,48 @@ export default class Objects
             }
         }
 
-        // Create physics object
-        object.collision = this.physics.addObjectFromThree({
-            meshes: [..._options.collision.children],
-            offset,
-            rotation,
-            mass: _options.mass,
-            sleep
-        })
-
-        for(const _child of object.container.children)
+        // Create physics object (only if collision model exists)
+        if(_options.collision)
         {
-            _child.position.sub(object.collision.center)
-        }
-
-        // Sound
-        if(_options.soundName)
-        {
-            object.collision.body.addEventListener('collide', (_event) =>
-            {
-                const relativeVelocity = _event.contact.getImpactVelocityAlongNormal()
-                this.sounds.play(_options.soundName, relativeVelocity)
+            object.collision = this.physics.addObjectFromThree({
+                meshes: [..._options.collision.children],
+                offset,
+                rotation,
+                mass: _options.mass,
+                sleep
             })
+
+            for(const _child of object.container.children)
+            {
+                _child.position.sub(object.collision.center)
+            }
+
+            // Sound
+            if(_options.soundName)
+            {
+                object.collision.body.addEventListener('collide', (_event) =>
+                {
+                    const relativeVelocity = _event.contact.getImpactVelocityAlongNormal()
+                    this.sounds.play(_options.soundName, relativeVelocity)
+                })
+            }
+        }
+        else
+        {
+            object.collision = null
         }
 
         // Shadow
-        // Add shadow
-        if(_options.shadow)
+        // Add shadow (only if shadows option is not explicitly false and visible)
+        if(_options.shadow && _options.shadows !== false)
         {
             this.shadows.add(object.container, _options.shadow)
+        }
+        // Auto-add shadow for objects with collision and no explicit shadow option
+        else if(_options.collision && object.container.visible && object.container.children.length > 0 && _options.shadows !== false)
+        {
+            // Only create shadow if container has visible children
+            this.shadows.add(object.container)
         }
 
         // Time tick event
