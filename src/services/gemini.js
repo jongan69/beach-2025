@@ -290,7 +290,7 @@ Do not include any explanatory text, just the raw JSON.`;
     }
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
             tools: [{ googleSearch: {} }]
@@ -357,7 +357,7 @@ export const analyzeCareerPotential = async (interests, skills, resumeText) => {
     Format your response using clear headings and bullet points in Markdown. Be encouraging and provide actionable advice.`;
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-flash',
         contents: prompt,
     });
 
